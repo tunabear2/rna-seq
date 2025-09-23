@@ -23,3 +23,8 @@ STAR or HISAT2 사용 . STAR는 Suffix Array + Hash 기반 . HISAT2는 Burrows-W
 gene_count.csv 공통 파일 생성
 
 여기까지가 공통 전처리 과정
+
+Volcano plot 
+ > DE analysis -> volcano plot
+
+ 
