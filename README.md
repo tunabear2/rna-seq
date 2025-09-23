@@ -10,7 +10,8 @@ TdT vs TdT Transwell, prom1_TdT vs prom1_TdT Transwell
 
 merge나 concatenate 할지 말지 고려하기.
 
-pipeline
+# workflow
+
 1. align reference 준비
 Genome FASTA: GRCh38.p14 , GENCODE human v49 (GRCh38.p14) GTF 사용
 2. 논문에 들어가야 하니 FastQC 진행 후 원시 데이터 품질 정보 수집
