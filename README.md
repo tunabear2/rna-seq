@@ -24,7 +24,4 @@ gene_count.csv 공통 파일 생성
 
 여기까지가 공통 전처리 과정
 
-Volcano plot 
- > DE analysis -> volcano plot
-
- 
+sequencing depth에 따른 차이를 보정하기 위해 DE analysis 전에 Normalization 거치기.
