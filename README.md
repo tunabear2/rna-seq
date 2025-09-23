@@ -24,4 +24,7 @@ gene_count.csv 공통 파일 생성
 
 여기까지가 공통 전처리 과정
 
+이후 진행 사항
+ > Count matrix -> (DESeq2/edgeR) : DESeq2로 진행 -> DEG 결과 얻기 -> Volcano plot -> Heatmap -> Enrichment (GO / KEGG / GSEA)
+
 sequencing depth에 따른 차이를 보정하기 위해 DE analysis 전에 Normalization 거치기.
