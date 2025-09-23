@@ -1,1 +1,45 @@
+RSTUDIO 설치하기
 
+install.packages("BiocManager") # 패키지 설치
+BiocManager::install() # Bioconductor의 core packages 설치
+BiocManager::install("DESeq2") #DESeq2 패키지 설치
+library(BiocManager)
+library(DESeq2)
+
+이제 featureCounts 결과 데이터를 활용해서 DE analysis 진행하기
+
+library(DESeq2)
+library(ggplot2)
+
+# 1) count matrix 불러오기
+counts <- read.csv("gene_counts.csv", row.names=1)   # 첫 열에 gene ID
+# 2) 메타데이터 불러오기 (조건 정보)
+coldata <- read.csv("sample_info.csv", row.names=1) # sampleID와 condition 포함
+
+# 3) DESeq2 객체 생성
+dds <- DESeqDataSetFromMatrix(countData = counts,
+                              colData = coldata,
+                              design = ~ condition)
+
+# 4) normalization 및 DE 분석
+dds <- DESeq(dds)
+res <- results(dds)   # 기본 비교 (예: treatment vs control)
+
+# 5) 결과 저장
+resOrdered <- res[order(res$pvalue), ]
+write.csv(as.data.frame(resOrdered), file="DEG_results.csv")
+# log2FoldChange vs -log10(p-value)
+res$logP <- -log10(res$padj)
+
+ggplot(res, aes(x=log2FoldChange, y=logP)) +
+  geom_point(alpha=0.4) +
+  geom_vline(xintercept=c(-1, 1), col="red", linetype="dashed") +
+  geom_hline(yintercept=-log10(0.05), col="blue", linetype="dashed") +
+  theme_minimal()
+
+library(DESeq2)
+dds <- DESeqDataSetFromMatrix(countData = counts_f, colData = coldata, design = ~ condition)
+
+# 많은 zero/구성편향이 우려되면 'poscounts' 추천
+dds <- estimateSizeFactors(dds, type = "poscounts")  # 기본은 "ratio"
+sizeFactors(dds)  # 샘플별 라이브러리 크기 보정계수
