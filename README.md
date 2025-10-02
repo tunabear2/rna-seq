@@ -14,6 +14,13 @@ merge나 concatenate 할지 말지 고려하기.
 
 1. align reference 준비
 Genome FASTA: GRCh38.p14 , GENCODE human v49 (GRCh38.p14) GTF 사용
+
+wget https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_49/gencode.v49.annotation.gtf.gz
+gunzip gencode.v49.annotation.gtf.gz
+
+wget https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_49/GRCh38.p14.genome.fa.gz
+gunzip GRCh38.p14.genome.fa.gz
+
 2. 논문에 들어가야 하니 FastQC 진행 후 원시 데이터 품질 정보 수집
 3. Align 전에 FASTQ 데이터 필터링 . fastp or trimmomatic 중에 하나 선택하기. (Hard filtering 시에는 trimmomatic 아니면 fastp)
 4. 필터링 이후 fastq 데이터 FastQC 진행.
