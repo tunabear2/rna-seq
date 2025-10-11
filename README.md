@@ -57,7 +57,7 @@ data sample download
 -SRR1039520 untreated
 -SRR1039521 Dex
 
-#conda 설치
+# conda 설치
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 
 bash Miniconda3-latest-Linux-x86_64.sh
@@ -74,3 +74,12 @@ conda create -n sra -c conda-forge -c bioconda sra-tools=3.1.1
 #빠른 다운로드를 위해 tmux 설치
 conda install -c conda-forge tmux
 여러개 창 띄워서 다운로드 진행
+
+# snakemake 설치 (version 9.9)
+conda install snakemake=9.9
+
+# Apptainer 설치
+conda install -c conda-forge apptainer
+
+# IMAGE 다운받기
+fastp, STAR, subread(featurecounts), fastqc, samtools, multiqc 등등
