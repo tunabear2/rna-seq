@@ -75,11 +75,25 @@ conda create -n sra -c conda-forge -c bioconda sra-tools=3.1.1
 conda install -c conda-forge tmux
 여러개 창 띄워서 다운로드 진행
 
-# snakemake 설치 (version 9.9)
-conda install snakemake=9.9
+# snakemake 설치 (version 9.13.2)
+conda install -c conda-forge -c bioconda -c nodefaults snakemake
 
-# Apptainer 설치
-conda install -c conda-forge apptainer
+# Apptainer 설치 (aws linux 2023 기준)
+sudo yum update -y sudo yum groupinstall "Development Tools" -y sudo yum install -y golang git wget squashfs-tools libseccomp-devel cryptsetup runc
+
+export VERSION=1.4.1 # 최신 버전 확인: https://github.com/apptainer/apptainer/releases
+
+wget https://github.com/apptainer/apptainer/releases/download/v1.4.1/apptainer-1.4.1.tar.gz
+
+tar -xzf apptainer-1.4.1.tar.gz
+
+cd apptainer-1.4.1
+
+./mconfig
+
+make -C builddir
+
+sudo make -C builddir install
 
 # IMAGE 다운받기
 fastp, STAR, subread(featurecounts), fastqc, samtools, multiqc 등등
