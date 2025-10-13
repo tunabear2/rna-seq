@@ -114,4 +114,6 @@ gocryptfs -version
 # IMAGE 다운받기
 fastp :apptainer build fastp.sif docker://staphb/fastp:1.0.1
 최신 버전 image가 없어서 직접 만듬(STAR(2.7.1b), subread(2.1.1)). 옮겨 사용하기
-, fastqc, samtools, multiqc 등등
+fastqc : apptainer build fastqc.sif docker://staphb/fastqc:0.12.1
+samtools : apptainer build samtools.sif docker://staphb/samtools:1.22.1
+multiqc : apptainer build multiqc.sif docker://multiqc/multiqc:v1.31
