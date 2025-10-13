@@ -95,5 +95,22 @@ make -C builddir
 
 sudo make -C builddir install
 
+# Apptainer .sif 파일 빠른 사용위한 tool 다운
+1. squashfuse 설치
+sudo yum install -y gcc make fuse3-devel autoconf automake libtool pkg-config git
+git clone https://github.com/vasi/squashfuse.git
+cd squashfuse
+./autogen.sh
+./configure
+make
+sudo make install
+
+2. gocryptfs 설치
+wget https://github.com/rfjakob/gocryptfs/releases/download/v2.5.1/gocryptfs_v2.5.1_linux-static_amd64.tar.gz
+tar -xzf gocryptfs_v2.5.1_linux-static_amd64.tar.gz
+sudo mv gocryptfs /usr/local/bin/
+gocryptfs -version
+
 # IMAGE 다운받기
-fastp, STAR, subread(featurecounts), fastqc, samtools, multiqc 등등
+fastp :apptainer build fastp.sif docker://staphb/fastp:1.0.1
+STAR: 최신 버전 image가 없어서 2.7.1b 버전 직접 만듬. star.sif 옮겨 사용하, subread(featurecounts), fastqc, samtools, multiqc 등등
