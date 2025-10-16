@@ -27,7 +27,7 @@ gunzip GRCh38.p14.genome.fa.gz
 5. read alignment 
 STAR or HISAT2 사용 . STAR는 Suffix Array + Hash 기반 . HISAT2는 Burrows-Wheeler Transform (BWT)기반
 작업 환경의 RAM 메모리가 여유로우면 STAR(30~40Gb) 아닐 때는 HISAT2 (10Gb 내외)
-6. FeatureCounts 진행 
+6. FeatureCounts 진행 X >> RSEM 으로 변경
 gene_count.csv 공통 파일 생성
 
 여기까지가 공통 전처리 과정
