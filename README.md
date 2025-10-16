@@ -27,7 +27,7 @@ gunzip GRCh38.p14.genome.fa.gz
 5. read alignment 
 STAR or HISAT2 사용 . STAR는 Suffix Array + Hash 기반 . HISAT2는 Burrows-Wheeler Transform (BWT)기반
 작업 환경의 RAM 메모리가 여유로우면 STAR(30~40Gb) 아닐 때는 HISAT2 (10Gb 내외)
-6. FeatureCounts 진행 X >> RSEM 으로 변경
+6. FeatureCounts 진행 X >> RSEM(v1.3.3) 으로 변경
 gene_count.csv 공통 파일 생성
 
 여기까지가 공통 전처리 과정
@@ -117,3 +117,4 @@ fastp :apptainer build fastp.sif docker://staphb/fastp:1.0.1
 fastqc : apptainer build fastqc.sif docker://staphb/fastqc:0.12.1
 samtools : apptainer build samtools.sif docker://staphb/samtools:1.22.1
 multiqc : apptainer build multiqc.sif docker://multiqc/multiqc:v1.31
+rsem : apptainer build rsem.sif docker://mateongenaert/rsem:1.3.3
