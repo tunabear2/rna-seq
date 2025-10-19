@@ -52,3 +52,26 @@ rule fastp:
         config["tools"]["fastp"]
     shell:
         "fastp -i {input.r1} -I {input.r2} -o {output.r1_trimmed} -O {output.r2_trimmed} --html {output.html} --json {output.json}"
+rule star_index:
+    input:
+        ref = "data/reference/GRCh38.p14.genome.fa"
+        gtf = "data/reference/gencode.v49.annotation.gtf"
+    output:
+        idx = "data/star_idx/"
+    singularity:
+        config["tools"]["star"]
+    shell:
+        "STAR --runThreadN 6 --runMode genomeGenerate --genomeDir {output.idx} --genomeFastaFiles {input.ref} --sjdbGTFfile {input.gtf} --sjdbOverhang 99"
+rule star:
+    input:
+        idx = "data/star_idx/",
+        r1 = lambda wildcard: f"results/fastp/{sample}_R1.trimmed.fastq",
+        r2 = lambda wildcard: f"results/fastp/{sample}_R2.trimmed.fastq"
+    output:
+        bam = "results/star/{sample}.sorted.bam"
+    params:
+        prefix = lambda wc: f"results/fastp/{wc.sample}."
+    singularity:
+        config["tools"]["star"]
+    shell:
+        "STAR --runThreadN 6 --genomeDir {input.idx} --readFilesIn {input.r1} {input.r2} --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within --outSAMattributes Standard --twopassMode Basic"
