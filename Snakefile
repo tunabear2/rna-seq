@@ -80,6 +80,10 @@ rule rsem:
     input:
         bam_tx = lambda wildcards: f"results/star/{wildcards.sample}.Aligned.toTranscriptome.out.bam"
     output:
-        
+        stat = "results/rsem/{sample}.stat"
+    singularity:
+        config["tools"]["rsem"]
+    params:
+        output_prefix = lambda wc: f"results/rsem/{wc.sample}"
     shell:
-        "rsem-calculate-expression --paired-end --alignments --fai data/reference/GRCh38.p14.genome.fa.fai --strandedness none --estimate-rspd --calc-pme --no-bam-output results/star/{sample}.Aligned.toTranscriptome.out.bam data/rsem/ results/rsem/SRR1039508
+        "rsem-calculate-expression --paired-end --alignments --fai data/reference/GRCh38.p14.genome.fa.fai --strandedness none --estimate-rspd --calc-pme --no-bam-output {input.bam_tx} data/rsem/rsem_genv49_GR38p14 {params.output_prefix}"
