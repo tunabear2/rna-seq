@@ -65,13 +65,13 @@ rule star_index:
 rule star:
     input:
         idx = "data/star_idx/",
-        r1 = lambda wildcard: f"results/fastp/{sample}_R1.trimmed.fastq",
-        r2 = lambda wildcard: f"results/fastp/{sample}_R2.trimmed.fastq"
+        r1 = lambda wildcard: f"results/fastp/{wildcard.sample}_R1.trimmed.fastq",
+        r2 = lambda wildcard: f"results/fastp/{wildcard.sample}_R2.trimmed.fastq"
     output:
-        bam = "results/star/{sample}.sorted.bam"
+        bam = "results/star/{sample}.Aligned.sortedByCoord.out.bam"
     params:
-        prefix = lambda wc: f"results/fastp/{wc.sample}."
+        prefix = lambda wc: f"results/star/{wc.sample}."
     singularity:
         config["tools"]["star"]
     shell:
-        "STAR --runThreadN 6 --genomeDir {input.idx} --readFilesIn {input.r1} {input.r2} --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within --outSAMattributes Standard --twopassMode Basic"
+        "STAR --runThreadN 6 --genomeDir {input.idx} --readFilesIn {input.r1} {input.r2} --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within --outSAMattributes Standard --twopassMode None"
