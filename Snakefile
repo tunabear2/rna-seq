@@ -23,7 +23,8 @@ rule all:
         expand("{fastqc_dir}/{sample}_1_fastqc.html", fastqc_dir=config["fastqc_dir"], sample=SAMPLES),
         expand("{fastqc_dir}/{sample}_2_fastqc.html", fastqc_dir=config["fastqc_dir"], sample=SAMPLES),
         expand("{trimmed_dir}/{sample}_R1.trimmed.fastq", trimmed_dir=config["trimmed_dir"], sample=SAMPLES),
-        expand("{trimmed_dir}/{sample}_R2.trimmed.fastq", trimmed_dir=config["trimmed_dir"], sample=SAMPLES)
+        expand("{trimmed_dir}/{sample}_R2.trimmed.fastq", trimmed_dir=config["trimmed_dir"], sample=SAMPLES),
+        expand("results/star/{sample}.Aligned.sortedByCoord.out.bam", sample=SAMPLES)
 
 rule fastqc:
     input:
