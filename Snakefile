@@ -75,7 +75,7 @@ rule star:
     singularity:
         config["tools"]["star"]
     shell:
-        "STAR --runThreadN 6 --genomeDir {input.idx} --readFilesIn {input.r1} {input.r2} --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within --outSAMattributes Standard --twopassMode None"
+        "STAR --runThreadN 6 --genomeDir {input.idx} --readFilesIn {input.r1} {input.r2} --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within --outSAMattributes Standard --quantMode TranscriptomeSAM --twopassMode None"
 rule rsem:
     input:
         bam_tx = lambda wildcards: f"results/star/{wildcards.sample}.Aligned.toTranscriptome.out.bam"
