@@ -9,12 +9,23 @@ install.packages("BiocManager") # 패키지 설치
 
 # Bioconductor의 core packages 설치
 BiocManager::install("DESeq2") #DESeq2 패키지 설치
-BiocManager::install("tximport") # rsem을 통해 생성된 데이터를 DESeq2 분석을 위한 table 데이터로 바꾸는 tool
-BiocManager::install("readr") # 나중에 csv 생성을 위한 tool
+BiocManager::install("tximport") # rsem을 통해 생성된 데이터를 DESeq2 분석을 위한 table 데이터로 바꾸는 tool 한마디로 genes.results 불러오기
+BiocManager::install("readr") # 나중에 csv,tsv 생성을 위한 tool
+BiocManager::install("apeglm") # log2FoldChange를 안정화 하는데 사용. volcano 품질이 올라감.
+BiocManager::install("clusterProfiler") # GO, KEGG, GSEA 분석을 위한 도구
+BiocManager::install("org.Hs.eg.db") # 인간 유전자 annotation DB
+BiocManager::install("AnnotationDbi") # gene ID 변환용 도
+BiocManager::install("DOSE") # enrichment 분석용 내부 엔진 도구
+BiocManager::install("fgsea") # GSEA 전용 패키지
+BiocManager::install("enrichplot") # GO/KEGG/GSEA 결과 시각화용
+BiocManager::install("pathview") # KEGG pathway 그림에 발현값 오버레이
+BiocManager::install("ComplexHeatmap") # Heatmap 시각화
 
-install.packages("ggplot2")
-install.packages("dplyr")
-install.packages("tibble")
+install.packages("ggplot2") # volcano 등 기본 그래프
+install.packages("dplyr") # 전처리 편의
+install.packages("tibble") # 전처리 편의
+install.packages("data.table") # 대용량 빠른 처리
+install.packages(c("ggrepel","patchwork","cowplot")) # volcano 라벨 겹치 방지와 그림 합치기/레이아웃용
 
 library(DESeq2)
 library(dplyr)
