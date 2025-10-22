@@ -24,7 +24,9 @@ rule all:
         expand("{fastqc_dir}/{sample}_2_fastqc.html", fastqc_dir=config["fastqc_dir"], sample=SAMPLES),
         expand("{trimmed_dir}/{sample}_R1.trimmed.fastq", trimmed_dir=config["trimmed_dir"], sample=SAMPLES),
         expand("{trimmed_dir}/{sample}_R2.trimmed.fastq", trimmed_dir=config["trimmed_dir"], sample=SAMPLES),
-        expand("results/star/{sample}.Aligned.sortedByCoord.out.bam", sample=SAMPLES)
+        expand("results/star/{sample}.Aligned.sortedByCoord.out.bam", sample=SAMPLES),
+        expand("results/rsem/{sample}.genes.results", sample=SAMPLES),
+        expand("results/rsem/{sample}.isoforms.results", sample=SAMPLES)
 
 rule fastqc:
     input:
@@ -55,7 +57,7 @@ rule fastp:
         "fastp -i {input.r1} -I {input.r2} -o {output.r1_trimmed} -O {output.r2_trimmed} --html {output.html} --json {output.json}"
 rule star_index:
     input:
-        ref = "data/reference/GRCh38.p14.genome.fa"
+        ref = "data/reference/GRCh38.p14.genome.fa",
         gtf = "data/reference/gencode.v49.annotation.gtf"
     output:
         idx = "data/star_idx/"
@@ -76,11 +78,22 @@ rule star:
         config["tools"]["star"]
     shell:
         "STAR --runThreadN 6 --genomeDir {input.idx} --readFilesIn {input.r1} {input.r2} --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within --outSAMattributes Standard --quantMode TranscriptomeSAM --twopassMode None"
+rule rsem_ref:
+    input:
+        ref = "data/reference/GRCh38.p14.genome.fa",
+        gtf = "data/reference/gencode.v49.annotation.gtf"
+    output:
+        directory("data/rsem")
+    singularity:
+        config["tools"]["rsem"]
+    shell:
+        "rsem-prepare-reference --gtf {input.gtf} {input.ref} data/rsem/rsem_genv49_GR38p14"
 rule rsem:
     input:
         bam_tx = lambda wildcards: f"results/star/{wildcards.sample}.Aligned.toTranscriptome.out.bam"
     output:
-        stat = "results/rsem/{sample}.stat"
+        gene = "results/rsem/{sample}.genes.results",
+        iso = "results/rsem/{sample}.isoforms.results"
     singularity:
         config["tools"]["rsem"]
     params:
