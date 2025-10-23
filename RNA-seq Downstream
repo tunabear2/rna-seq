@@ -72,3 +72,84 @@ dds <- DESeqDataSetFromMatrix(countData = counts_f, colData = coldata, design = 
 # 많은 zero/구성편향이 우려되면 'poscounts' 추천
 dds <- estimateSizeFactors(dds, type = "poscounts")  # 기본은 "ratio"
 sizeFactors(dds)  # 샘플별 라이브러리 크기 보정계수
+
+# DESeq2 과정
+if(!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("DESeq2")
+force = TRUE
+
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("tibble")
+install.packages(c("ggrepel","patchwork","cowplot"))
+BiocManager::install("apeglm")
+a
+BiocManager::install("clusterProfiler")
+a
+BiocManager::install("org.Hs.eg.db")
+a
+BiocManager::install("AnnotationDbi")
+a
+BiocManager::install("DOSE")
+a
+BiocManager::install("fgsea")
+a
+BiocManager::install("enrichplot")
+a
+BiocManager::install("pathview")
+a
+BiocManager::install("ComplexHeatmap")
+a
+BiocManager::install("tximport")
+a
+BiocManager::install("readr")
+a
+
+library(DESeq2)
+library(dplyr)
+library(tibble)
+library(ggplot2)
+library(tximport)
+library(readr)
+library(apeglm)
+library(ggrepel)
+library(ComplexHeatmap)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(enrichplot)
+library(fgsea)
+library(pathview)
+
+samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
+getwd()
+setwd("C:/Users/rkawk")
+getwd()
+
+rsem_dir <- "C:/Users/rkawk/rsem"
+files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
+stopifnot(length(files) > 1)
+
+samples <- sub("\\.genes\\.results$", "", basename(files))
+names(files) <- samples
+
+condition <- factor(rep(c("Control","Treat"), times = length(samples)/2),
+                    levels = c("Control","Treat"))
+
+coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
+
+condition
+data.frame(samples, condition) # 확인용
+
+txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
+                countsFromAbundance = "no")
+
+txi$length[txi$length == 0] <- 1
+
+dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ condition)
+
+dds <- DESeq(dds)
+
+res <- results(dds, contrast = c("condition", "Treat", "Control"))
+res <- lfcShrink(dds, coef = "condition_Treat_vs_Control", type = "apeglm")
