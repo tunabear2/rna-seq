@@ -121,6 +121,7 @@ library(org.Hs.eg.db)
 library(enrichplot)
 library(fgsea)
 library(pathview)
+library(AnnotationDbi)
 
 samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
 getwd()
@@ -153,3 +154,60 @@ dds <- DESeq(dds)
 
 res <- results(dds, contrast = c("condition", "Treat", "Control"))
 res <- lfcShrink(dds, coef = "condition_Treat_vs_Control", type = "apeglm")
+
+res_df <- as.data.frame(res) %>%
+  tibble::rownames_to_column("gene_id") %>%
+  mutate(
+    log2fc = log2FoldChange,
+    pval = padj
+  ) %>%
+  filter(!is.na(pval))
+
+# 임계값 설정 (샘플에 따라 변경하기)
+lfc_cut <- 0.6
+fdr_cut <- 0.05
+
+res_df <- res_df %>%
+  mutate(
+    diffexpressed = case_when(
+      pval < fdr_cut & log2fc >= lfc_cut ~ "Up",
+      pval < fdr_cut & log2fc <= -lfc_cut ~ "Down",
+      TRUE ~ "NS"
+    )
+  )
+
+
+
+# 라벨링용 상위 유전자 선택(topN 값은 유동적으로 변경) 변화량 기준이면 arrange(desc(abs(log2fc)))
+topN <- 10
+label_top <- res_df %>%
+  filter(diffexpressed != "NS") %>%
+  arrange(pval) %>%
+  head(topN) %>%
+  pull(gene_id)
+
+res_df <- res_df %>%
+  mutate(
+    delabel = ifelse(gene_id %in% label_top, gene_id, NA_character_)
+  )
+
+# volcano plot 그리기
+volcanoplot <- ggplot(res_df, aes(x = log2fc, y = -log10(pval),
+                                  color = diffexpressed, label = delabel)) +
+  geom_vline(xintercept = c(-lfc_cut, lfc_cut), color = "gray", linetype = "dashed") +
+  geom_hline(yintercept = -log10(fdr_cut), color = "gray", linetype = "dashed") +
+  geom_point(size = 2) +
+  scale_color_manual(values = c("Down" = "#79A9E1", "NS" = "grey70", "Up" = "#8B2B2B"),
+                     labels = c("Down" = "Downregulated",
+                                "NS" = "Not significant",
+                                "Up" = "Upregulated")) +
+  labs(color = "Group",
+       x = expression("log"[2]*"FC (shrunk)"),
+       y = expression("-log"[10]*"FDR (padj)"),
+       title = "Volcano plot: Treat(test) vs Control(original)") +
+  coord_cartesian(ylim = c(0, NA), xlim = c(-10, 10)) +
+  scale_x_continuous(breaks = seq(-10, 10, 2)) +
+  theme_bw() +
+  geom_text_repel(max.overlaps = Inf, na.rm = TRUE)
+
+print(volcanoplot)
