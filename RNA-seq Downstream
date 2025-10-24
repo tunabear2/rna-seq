@@ -320,12 +320,15 @@ volcanoplot <- ggplot(res_df, aes(x = log2fc, y = -log10(pval),
        x = expression("log"[2]*"FC (shrunk)"),
        y = expression("-log"[10]*"FDR (padj)"),
        title = "Volcano plot: Treat(test) vs Control(original)") +
-  coord_cartesian(ylim = c(0, NA), xlim = c(-20, 20)) +
+  coord_cartesian(ylim = c(0, NA), xlim = c(-10, 10)) +
+  scale_x_continuous(breaks = seq(-10, 10, by = 2)) +
   theme_minimal(base_size = 12) +
   theme(
-    legend.position = "none",
+    legend.position = "right",
     panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank()
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.6)
   ) +
   geom_text_repel(
     aes(label = delabel),
