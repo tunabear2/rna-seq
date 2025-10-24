@@ -337,3 +337,64 @@ volcanoplot <- ggplot(res_df, aes(x = log2fc, y = -log10(pval),
     )
 
 print(volcanoplot)
+
+# Heatmap 그리기 topN 선정 버전 topn 수는 유동적으로 결정
+vsd <- vst(dds, blind = FALSE)
+
+topn <- 15
+var_genes <- head(order(rowVars(assay(vsd)), decreasing = TRUE),
+                  topn)
+mat <- assay(vsd)[var_genes,]
+
+ens_ids <- sub("\\..*$", "", rownames(mat))
+
+map_tbi <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys = ens_ids,
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL")
+)
+
+map_tbi <- distinct(map_tbi, ENSEMBL, .keep_all = TRUE)
+
+rownames(mat) <- map_tbi$SYMBOL[match(ens_ids, map_tbi$ENSEMBL)]
+
+mat_z <- t(scale(t(mat)))
+
+ha <- HeatmapAnnotation(
+  condition = coldata$condition,
+  col = list(Condition = c(Control = "#94a3b8", Treat = "#f59e0b"))
+)
+
+ht <- Heatmap(mat_z,
+              name = "Z-score",
+              top_annotation = ha,
+              show_row_names = TRUE,
+              show_column_names = TRUE,
+              cluster_rows = TRUE, cluster_columns = TRUE,
+              row_names_gp = gpar(fontsize = 10)
+              )
+draw(ht)
+
+# 이름 없이 추세만 보는 용도 heatmap
+vsd <- vst(dds, blind = FALSE)
+
+topn <- 500
+var_genes <- head(order(rowVars(assay(vsd)), decreasing = TRUE),
+                  topn)
+mat <- assay(vsd)[var_genes,]
+mat_z <- t(scale(t(mat)))
+
+ha <- HeatmapAnnotation(
+  condition = coldata$condition,
+  col = list(Condition = c(Control = "#94a3b8", Treat = "#f59e0b"))
+)
+
+ht <- Heatmap(mat_z,
+              name = "Z-score",
+              top_annotation = ha,
+              show_row_names = FALSE,
+              show_column_names = TRUE,
+              cluster_rows = TRUE, cluster_columns = TRUE,)
+
+draw(ht)
