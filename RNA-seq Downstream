@@ -211,3 +211,126 @@ volcanoplot <- ggplot(res_df, aes(x = log2fc, y = -log10(pval),
   geom_text_repel(max.overlaps = Inf, na.rm = TRUE)
 
 print(volcanoplot)
+
+
+# 라벨링 이름 유전자로 바꾼 버전
+suppressPackageStartupMessages({
+  library(tximport)
+  library(DESeq2)
+  library(apeglm)
+  library(dplyr)
+  library(tibble)
+  library(ggplot2)
+  library(AnnotationDbi)
+  library(org.Hs.eg.db)
+  library(ggrepel)
+})
+
+samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
+
+rsem_dir <- "C:/Users/rkawk/rsem"
+files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
+stopifnot(length(files) > 1)
+
+samples <- sub("\\.genes\\.results$", "", basename(files))
+names(files) <- samples
+
+condition <- factor(rep(c("Control","Treat"), times = length(samples)/2),
+                    levels = c("Control","Treat"))
+
+coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
+
+condition
+data.frame(samples, condition) # 확인용
+
+txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
+                countsFromAbundance = "no")
+
+txi$length[txi$length == 0] <- 1
+
+dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ condition)
+
+dds <- DESeq(dds)
+
+res <- results(dds, contrast = c("condition", "Treat", "Control"))
+res <- lfcShrink(dds, coef = "condition_Treat_vs_Control", type = "apeglm")
+
+res_df <- as.data.frame(res) %>%
+  tibble::rownames_to_column("gene_id") %>%
+  mutate(
+    log2fc = log2FoldChange,
+    pval = padj
+  ) %>%
+  filter(!is.na(pval))
+
+# 임계값 설정 (샘플에 따라 변경하기)
+lfc_cut <- 0.6
+fdr_cut <- 0.05
+
+res_df <- res_df %>%
+  mutate(
+    diffexpressed = case_when(
+      pval < fdr_cut & log2fc >= lfc_cut ~ "Up",
+      pval < fdr_cut & log2fc <= -lfc_cut ~ "Down",
+      TRUE ~ "NS"
+    )
+  )
+
+res_df <- res_df %>%
+  mutate(ENSEMBL = sub("\\..*$", "", gene_id))
+
+map_tbi <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys = unique(res_df$ENSEMBL),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% distinct(ENSEMBL, .keep_all = TRUE)
+
+res_df <- res_df %>%
+  left_join(map_tbi, by = "ENSEMBL") %>%
+  mutate(
+    symbol = ifelse(!is.na(SYMBOL), SYMBOL, gene_id),
+    entrez = ENTREZID
+  )
+
+# 라벨링용 상위 유전자 선택(topN 값은 유동적으로 변경) 변화량 기준이면 arrange(desc(abs(log2fc)))
+topN <- 15
+label_top <- res_df %>%
+  filter(diffexpressed != "NS") %>%
+  arrange(pval) %>%
+  head(topN) %>%
+  pull(symbol)
+
+res_df <- res_df %>%
+  mutate(
+    delabel = ifelse(symbol %in% label_top, symbol, NA_character_)
+  )
+
+# volcano plot 그리기, coord_cartesian 값 조절하면서 나타내기기
+volcanoplot <- ggplot(res_df, aes(x = log2fc, y = -log10(pval),
+                                  color = diffexpressed, label = delabel)) +
+  geom_vline(xintercept = c(-lfc_cut, lfc_cut), color = "gray", linetype = "dashed") +
+  geom_hline(yintercept = -log10(fdr_cut), color = "gray", linetype = "dashed") +
+  geom_point(size = 2, alpha = 0.9, stroke = 0) +
+  scale_color_manual(values = c("Down" = "#79A9E1", "NS" = "grey70", "Up" = "#8B2B2B"),
+                     labels = c("Down" = "Downregulated",
+                                "NS" = "Not significant",
+                                "Up" = "Upregulated")) +
+  labs(color = "Group",
+       x = expression("log"[2]*"FC (shrunk)"),
+       y = expression("-log"[10]*"FDR (padj)"),
+       title = "Volcano plot: Treat(test) vs Control(original)") +
+  coord_cartesian(ylim = c(0, NA), xlim = c(-20, 20)) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank()
+  ) +
+  geom_text_repel(
+    aes(label = delabel),
+    max.overlaps = Inf, na.rm = TRUE, box.padding = 0.4, point.padding = 0.2,
+    size = 3, segment.color = "grey60", min.segment.length = 0
+    )
+
+print(volcanoplot)
