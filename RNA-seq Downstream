@@ -5,110 +5,41 @@ R 버전에 맞게 다운로드
 
 # R에서 진행
 
-install.packages("BiocManager") # 패키지 설치
-
 # Bioconductor의 core packages 설치
-BiocManager::install("DESeq2") #DESeq2 패키지 설치
-BiocManager::install("tximport") # rsem을 통해 생성된 데이터를 DESeq2 분석을 위한 table 데이터로 바꾸는 tool 한마디로 genes.results 불러오기
-BiocManager::install("readr") # 나중에 csv,tsv 생성을 위한 tool
-BiocManager::install("apeglm") # log2FoldChange를 안정화 하는데 사용. volcano 품질이 올라감.
-BiocManager::install("clusterProfiler") # GO, KEGG, GSEA 분석을 위한 도구
-BiocManager::install("org.Hs.eg.db") # 인간 유전자 annotation DB
-BiocManager::install("AnnotationDbi") # gene ID 변환용 도
-BiocManager::install("DOSE") # enrichment 분석용 내부 엔진 도구
-BiocManager::install("fgsea") # GSEA 전용 패키지
-BiocManager::install("enrichplot") # GO/KEGG/GSEA 결과 시각화용
-BiocManager::install("pathview") # KEGG pathway 그림에 발현값 오버레이
-BiocManager::install("ComplexHeatmap") # Heatmap 시각화
-
-install.packages("ggplot2") # volcano 등 기본 그래프
-install.packages("dplyr") # 전처리 편의
-install.packages("tibble") # 전처리 편의
-install.packages("data.table") # 대용량 빠른 처리
-install.packages(c("ggrepel","patchwork","cowplot")) # volcano 라벨 겹치 방지와 그림 합치기/레이아웃용
-
-library(DESeq2)
-library(dplyr)
-library(tibble)
-library(ggplot2)
-library(tximport)
-library(readr)
-library(ggrepel)
-library(org.Hs.eg.db)
-library(AnnotationDbi)
-library(apeglm)
-
-# Sample 경로 만들기.
-samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
-files <- file.path("result/rsem", paste0(samples, ".genes.results"))
-names(files) <- samples
-# gene-Level RSEM 파일 불러오기
-txi <- txiport(files, type = "rsem", txIn = FALSE, txOut = FALSE)
-# 1) count matrix 불러오기
-counts <- read.csv("gene_counts.csv", row.names=1)   # 첫 열에 gene ID
-# 2) 메타데이터 불러오기 (조건 정보)
-coldata <- read.csv("sample_info.csv", row.names=1) # sampleID와 condition 포함
-
-# 3) DESeq2 객체 생성
-dds <- DESeqDataSetFromMatrix(countData = counts,
-                              colData = coldata,
-                              design = ~ condition)
-
-# 4) normalization 및 DE 분석
-dds <- DESeq(dds)
-res <- results(dds)   # 기본 비교 (예: treatment vs control)
-
-# 5) 결과 저장
-resOrdered <- res[order(res$pvalue), ]
-write.csv(as.data.frame(resOrdered), file="DEG_results.csv")
-# log2FoldChange vs -log10(p-value)
-res$logP <- -log10(res$padj)
-
-ggplot(res, aes(x=log2FoldChange, y=logP)) +
-  geom_point(alpha=0.4) +
-  geom_vline(xintercept=c(-1, 1), col="red", linetype="dashed") +
-  geom_hline(yintercept=-log10(0.05), col="blue", linetype="dashed") +
-  theme_minimal()
-
-library(DESeq2)
-dds <- DESeqDataSetFromMatrix(countData = counts_f, colData = coldata, design = ~ condition)
-
-# 많은 zero/구성편향이 우려되면 'poscounts' 추천
-dds <- estimateSizeFactors(dds, type = "poscounts")  # 기본은 "ratio"
-sizeFactors(dds)  # 샘플별 라이브러리 크기 보정계수
 
 # DESeq2 과정
 if(!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
 
-BiocManager::install("DESeq2")
-force = TRUE
+BiocManager::install("DESeq2")  #DESeq2 패키지 설치
 
-install.packages("ggplot2")
-install.packages("dplyr")
-install.packages("tibble")
-install.packages(c("ggrepel","patchwork","cowplot"))
-BiocManager::install("apeglm")
+install.packages("ggplot2") # volcano 등 기본 그래프
+install.packages("dplyr")  # 전처리 편의
+install.packages("tibble") # 전처리 편의
+install.packages("data.table") # 대용량 빠른 처리
+install.packages(c("ggrepel","patchwork","cowplot")) # volcano 라벨 겹치 방지와 그림 합치기/레이아웃용
+BiocManager::install("pathview") # KEGG pathway 그림에 발현값 오버레이
+BiocManager::install("apeglm") # log2FoldChange를 안정화 하는데 사용. volcano 품질이 올라감.
 a
-BiocManager::install("clusterProfiler")
+BiocManager::install("clusterProfiler") # GO, KEGG, GSEA 분석을 위한 도구
 a
-BiocManager::install("org.Hs.eg.db")
+BiocManager::install("org.Hs.eg.db") # 인간 유전자 annotation DB
 a
-BiocManager::install("AnnotationDbi")
+BiocManager::install("AnnotationDbi") # gene ID 변환용 도구
 a
-BiocManager::install("DOSE")
+BiocManager::install("DOSE") # enrichment 분석용 내부 엔진 도구
 a
-BiocManager::install("fgsea")
+BiocManager::install("fgsea") # GSEA 전용 패키지
 a
-BiocManager::install("enrichplot")
+BiocManager::install("enrichplot") # GO/KEGG/GSEA 결과 시각화용
 a
-BiocManager::install("pathview")
+BiocManager::install("pathview") # KEGG pathway 그림에 발현값 오버레이
 a
-BiocManager::install("ComplexHeatmap")
+BiocManager::install("ComplexHeatmap") # Heatmap 시각화
 a
-BiocManager::install("tximport")
+BiocManager::install("tximport") # rsem을 통해 생성된 데이터를 DESeq2 분석을 위한 table 데이터로 바꾸는 tool 한마디로 genes.results 불러오기
 a
-BiocManager::install("readr")
+BiocManager::install("readr") # 나중에 csv,tsv 생성을 위한 tool
 a
 
 library(DESeq2)
@@ -218,17 +149,6 @@ print(volcanoplot)
 
 
 # 라벨링 이름 유전자로 바꾼 버전
-suppressPackageStartupMessages({
-  library(tximport)
-  library(DESeq2)
-  library(apeglm)
-  library(dplyr)
-  library(tibble)
-  library(ggplot2)
-  library(AnnotationDbi)
-  library(org.Hs.eg.db)
-  library(ggrepel)
-})
 
 samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
 
