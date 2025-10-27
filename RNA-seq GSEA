@@ -1,1 +1,136 @@
+samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
 
+rsem_dir <- "C:/Users/rkawk/rsem"
+files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
+stopifnot(length(files) > 1)
+
+samples <- sub("\\.genes\\.results$", "", basename(files))
+names(files) <- samples
+
+condition <- factor(rep(c("Control","Treat"), times = length(samples)/2),
+                    levels = c("Control","Treat"))
+
+coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
+
+condition
+data.frame(samples, condition) # 확인용
+
+txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
+                countsFromAbundance = "no")
+
+txi$length[txi$length == 0] <- 1
+
+dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ condition)
+
+dds <- DESeq(dds)
+
+# 이따가
+res <- results(dds, contrast = c("condition", "Treat", "Control"))
+res <- lfcShrink(dds, coef = "condition_Treat_vs_Control", type = "apeglm")
+
+res_df <- as.data.frame(res)
+res_df$gene_id <- rownames(res_df)
+
+res_df <- res_df %>%
+  dplyr::mutate(ensembl_core = sub("\\.\\d+$", "", gene_id))
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(res_df$ensembl_core),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+res_df <- res_df %>%
+  dplyr::left_join(map_orgdb, by = c("ensembl_core" = "ENSEMBL")) %>%
+  dplyr::mutate(
+    SYMBOL = dplyr::na_if(SYMBOL, ""),                 # 빈 문자열 → NA
+    symbol = ifelse(!is.na(SYMBOL), SYMBOL, gene_id),  # 심볼 없으면 원래 ID 유지
+    entrez = ENTREZID
+  )
+
+dir.create("results/gsea", showWarnings = FALSE, recursive = TRUE)
+
+res_wald <- DESeq2::results(dds, name = "condition_Treat_vs_Control")
+
+rk_df <- tibble(
+  gene_id      = rownames(res_wald),
+  stat_wald    = as.numeric(res_wald$stat),
+  pval_wald    = as.numeric(res_wald$pvalue)
+) %>%
+  mutate(ensembl_core = sub("\\.\\d+$", "", gene_id)) %>%
+  # res_df(이미 만든 테이블: lfcShrink 결과 + SYMBOL/entrez 포함)와 조인
+  left_join(res_df %>% dplyr::select(ensembl_core, log2FoldChange, entrez, SYMBOL, symbol), by = "ensembl_core") %>%
+  # ranking 점수 결정: stat_wald가 있으면 그걸, 없으면 sign(LFC)*-log10(pval) 사용
+  mutate(rank_score = dplyr::coalesce(stat_wald,
+                                      sign(log2FoldChange) * -log10(pval_wald + 1e-300))) %>%
+  # fgsea는 이름이 유전자(여기선 ENTREZ), 값이 연속 점수인 named numeric 벡터를 기대
+  filter(!is.na(entrez), !is.na(rank_score))
+
+rk_df_dedup <- rk_df %>%
+  group_by(entrez) %>%
+  slice_max(order_by = abs(rank_score), n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+gene_ranks <- rk_df_dedup$rank_score
+names(gene_ranks) <- as.character(rk_df_dedup$entrez)
+
+gene_ranks <- sort(gene_ranks, decreasing = TRUE)
+
+bg_entrez <- unique(rk_df_dedup$entrez)
+
+msig_category <- "H"
+msig_subcat   <- NULL
+
+msig <- msigdbr::msigdbr(species = "Homo sapiens",
+                         category = msig_category,
+                         subcategory = msig_subcat) %>%
+  dplyr::select(gs_name, entrez_gene)
+
+pathways <- split(msig$entrez_gene, msig$gs_name)
+
+set.seed(42)
+fg <- fgsea(pathways = pathways,
+            stats    = gene_ranks,
+            minSize  = 10,
+            maxSize  = 500)
+
+fg_res <- fg %>%
+  arrange(padj, desc(abs(NES))) %>%
+  as_tibble()
+
+plot_topn <- 10
+top_paths <- fg_res$pathway[seq_len(min(plot_topn, nrow(fg_res)))]
+
+for (pw in top_paths) {
+  suppressWarnings({
+    p <- plotEnrichment(pathways[[pw]], gene_ranks) +
+      ggtitle(paste0(pw,
+                     "\nNES=", round(fg_res$NES[fg_res$pathway == pw], 3),
+                     "  FDR=", signif(fg_res$padj[fg_res$pathway == pw], 3)))
+    ggsave(filename = file.path("results/gsea", paste0("enrichment_", gsub("[^A-Za-z0-9_.-]", "_", pw), ".png")),
+           plot = p, width = 7, height = 5, dpi = 300)
+  })
+}
+
+entrez2symbol <- res_df %>% dplyr::select(entrez, SYMBOL, symbol) %>%
+  distinct(entrez, .keep_all = TRUE)
+
+annot_leading_edge <- function(pathway_name, leading_edge_entrez) {
+  tibble(pathway = pathway_name,
+         entrez  = as.character(leading_edge_entrez)) %>%
+    left_join(entrez2symbol, by = "entrez") %>%
+    mutate(gene = dplyr::coalesce(SYMBOL, symbol, entrez))
+}
+
+le_tables <- lapply(top_paths, function(pw) {
+  le <- fg_res$leadingEdge[match(pw, fg_res$pathway)][[1]]
+  if (length(le) == 0) return(NULL)
+  annot_leading_edge(pw, le)
+})
+
+le_df <- bind_rows(le_tables)
+if (nrow(le_df) > 0) {
+  readr::write_csv(le_df, "results/gsea/gsea_top_leading_edge_genes.csv")
+}
