@@ -41,6 +41,7 @@ BiocManager::install("tximport") # rsem을 통해 생성된 데이터를 DESeq2 
 a
 BiocManager::install("readr") # 나중에 csv,tsv 생성을 위한 tool
 a
+BiocManager::install("biomaRt") # Gene id symbol 설정.
 
 library(DESeq2)
 library(dplyr)
@@ -57,6 +58,7 @@ library(enrichplot)
 library(fgsea)
 library(pathview)
 library(AnnotationDbi)
+library(biomaRt)
 
 samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
 
