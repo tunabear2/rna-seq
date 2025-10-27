@@ -18,6 +18,7 @@ install.packages("dplyr")  # 전처리 편의
 install.packages("tibble") # 전처리 편의
 install.packages("data.table") # 대용량 빠른 처리
 install.packages(c("ggrepel","patchwork","cowplot")) # volcano 라벨 겹치 방지와 그림 합치기/레이아웃용
+install.packages("msigdbr")
 BiocManager::install("pathview") # KEGG pathway 그림에 발현값 오버레이
 BiocManager::install("apeglm") # log2FoldChange를 안정화 하는데 사용. volcano 품질이 올라감.
 a
@@ -60,6 +61,7 @@ library(pathview)
 library(AnnotationDbi)
 library(biomaRt)
 library(circlize)
+library(msigdbr)
 
 samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
 
