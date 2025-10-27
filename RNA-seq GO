@@ -1,1 +1,123 @@
+samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
 
+rsem_dir <- "C:/Users/rkawk/rsem"
+files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
+stopifnot(length(files) > 1)
+
+samples <- sub("\\.genes\\.results$", "", basename(files))
+names(files) <- samples
+
+condition <- factor(rep(c("Control","Treat"), times = length(samples)/2),
+                    levels = c("Control","Treat"))
+
+coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
+
+condition
+data.frame(samples, condition) # 확인용
+
+txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
+                countsFromAbundance = "no")
+
+txi$length[txi$length == 0] <- 1
+
+dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ condition)
+
+dds <- DESeq(dds)
+
+res <- results(dds, contrast = c("condition", "Treat", "Control"))
+res <- lfcShrink(dds, coef = "condition_Treat_vs_Control", type = "apeglm")
+
+res_df <- as.data.frame(res)
+res_df$gene_id <- rownames(res_df)
+
+res_df <- res_df %>%
+  dplyr::mutate(ensembl_core = sub("\\.\\d+$", "", gene_id))
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(res_df$ensembl_core),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+res_df <- res_df %>%
+  dplyr::left_join(map_orgdb, by = c("ensembl_core" = "ENSEMBL")) %>%
+  dplyr::mutate(
+    SYMBOL = dplyr::na_if(SYMBOL, ""),                 # 빈 문자열 → NA
+    symbol = ifelse(!is.na(SYMBOL), SYMBOL, gene_id),  # 심볼 없으면 원래 ID 유지
+    entrez = ENTREZID
+  )
+
+bg_entrez <- res_df$entrez %>% unique() %>% na.omit()
+
+# 유의한 DEG 목록 확인하는건데, Cut off는 연구 맥락에 맞게 조절
+sig_entrez <- res_df %>%
+  filter(!is.na(entrez), !is.na(padj)) %>%
+  filter(padj < 0.05, abs(log2FoldChange) >= 1) %>%
+  pull(entrez) %>% unique()
+
+length(bg_entrez); length(sig_entrez)  # 대략 규모 확인
+
+run_enrichGO <- function(genes, universe, ont = c("BP","MF","CC")) {
+  res <- lapply(ont, function(o) {
+    enrichGO(
+      gene          = genes,
+      universe      = universe,
+      OrgDb         = org.Hs.eg.db,
+      keyType       = "ENTREZID",
+      ont           = o,                 # "BP" / "MF" / "CC"
+      pAdjustMethod = "BH",
+      pvalueCutoff  = 0.05,
+      qvalueCutoff  = 0.05,
+      minGSSize     = 10,
+      maxGSSize     = 500,
+      readable      = TRUE               # ENTREZ → SYMBOL로 바꿔줌(표시용)
+    )
+  })
+  names(res) <- ont
+  res
+}
+
+ego <- run_enrichGO(sig_entrez, bg_entrez)
+ego$BP; ego$MF; ego$CC
+
+ego_s <- lapply(ego, function(x) {
+  if (is.null(x) || nrow(as.data.frame(x)) == 0) return(x)
+  x <- simplify(x, cutoff = 0.7, by = "p.adjust", select_fun = min)  # 유사한 GO term 축약
+  x
+})
+
+# term 간 유사도(emapplot에 필요)
+ego_sim <- lapply(ego_s, function(x) {
+  if (is.null(x) || nrow(as.data.frame(x)) == 0) return(x)
+  pairwise_termsim(x)
+})
+
+dir.create("results/go", recursive = TRUE, showWarnings = FALSE) # 결과 폴더 만들기
+
+plot_and_save <- function(enrich_obj, name_prefix, outdir = "results/go", top = 20) {
+  if (is.null(enrich_obj) || nrow(as.data.frame(enrich_obj)) == 0) return(invisible(NULL))
+  
+  p1 <- dotplot(enrich_obj, showCategory = top) + ggtitle(paste0(name_prefix, " — dotplot"))
+  ggsave(filename = paste0("results/go/", name_prefix, "_dotplot.png"), plot = p1, width = 8, height = 6, dpi = 300)
+  
+  p2 <- barplot(enrich_obj, showCategory = top) + ggtitle(paste0(name_prefix, " — barplot") + theme(axis.text.y = element_text(size = 8)))
+  ggsave(filename = paste0("results/go/", name_prefix, "_barplot.png"), plot = p2, width = 8, height = 12, dpi = 300)
+  
+  write.csv(as.data.frame(enrich_obj),
+            file = paste0("results/go/", name_prefix, "_enrich.csv"),
+            row.names = FALSE)
+}
+
+# BP/MF/CC 각각 저장
+lapply(names(ego_s), function(ont) plot_and_save(ego_s[[ont]], paste0("GO_", ont)))
+
+# emapplot / cnetplot (용어-유전자 네트워크) — 선택
+if (!is.null(ego_sim$BP) && nrow(as.data.frame(ego_sim$BP)) > 0) {
+  p3 <- emapplot(ego_sim$BP, showCategory = 30)
+  ggsave("results/go/GO_BP_emapplot.png", p3, width = 8, height = 6, dpi = 300)
+  
+  p4 <- cnetplot(ego_sim$BP, showCategory = 10, foldChange = NULL)  # foldChange 매핑 가능
+  ggsave("results/go/GO_BP_cnetplot.png", p4, width = 10, height = 8, dpi = 300)
+}
