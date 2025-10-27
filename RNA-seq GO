@@ -99,8 +99,8 @@ dir.create("results/go", recursive = TRUE, showWarnings = FALSE) # 결과 폴더
 plot_and_save <- function(enrich_obj, name_prefix, outdir = "results/go", top = 20) {
   if (is.null(enrich_obj) || nrow(as.data.frame(enrich_obj)) == 0) return(invisible(NULL))
   
-  p1 <- dotplot(enrich_obj, showCategory = top) + ggtitle(paste0(name_prefix, " — dotplot"))
-  ggsave(filename = paste0("results/go/", name_prefix, "_dotplot.png"), plot = p1, width = 8, height = 6, dpi = 300)
+  p1 <- dotplot(enrich_obj, showCategory = top) + ggtitle(paste0(name_prefix, " — dotplot") + theme(axis.text.y = element_text(size = 8)))
+  ggsave(filename = paste0("results/go/", name_prefix, "_dotplot.png"), plot = p1, width = 8, height = 12, dpi = 300)
   
   p2 <- barplot(enrich_obj, showCategory = top) + ggtitle(paste0(name_prefix, " — barplot") + theme(axis.text.y = element_text(size = 8)))
   ggsave(filename = paste0("results/go/", name_prefix, "_barplot.png"), plot = p2, width = 8, height = 12, dpi = 300)
