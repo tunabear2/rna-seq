@@ -1,3 +1,13 @@
+data/fastq/ 아래에 보고서 표의 파일들이 그대로 있어야 해요
+예: prom1_TdT_1_1.fq.gz, prom1_TdT_1_2.fq.gz, …
+
+star_index_dir와 rsem_reference는 이미 생성돼 있어야 해요. (없으면 만들어야 함)
+
+genome_fai는 samtools faidx GRCh38.fa로 생성해 두세요.
+
+컨테이너 경로(또는 모듈 환경)를 네 환경에 맞게 수정.
+
+snakemake -j 8 --use-singularity (환경에 맞게) 실행
 
 configfile: "config/config.yaml"
 
