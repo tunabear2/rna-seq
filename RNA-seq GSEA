@@ -134,3 +134,31 @@ le_df <- bind_rows(le_tables)
 if (nrow(le_df) > 0) {
   readr::write_csv(le_df, "results/gsea/gsea_top_leading_edge_genes.csv")
 }
+
+##온라인 GSEA 포멧만들기
+gene_ranks <- sort(gene_ranks, decreasing = TRUE)
+
+# 2) 중복 유전자 제거(이미 rk_df_dedup에서 처리했지만, 혹시 모를 안전장치)
+gene_ranks <- gene_ranks[!duplicated(names(gene_ranks))]
+
+# 3) 사용할 ID 선택: GSEA는 SYMBOL을 더 읽기 편함. (Entrez도 OK)
+# 만약 Entrez → Symbol로 바꾸고 싶으면:
+id_map <- res_df %>% dplyr::select(entrez, SYMBOL, symbol) %>% distinct(entrez, .keep_all = TRUE)
+id_map$SYMBOL <- ifelse(is.na(id_map$SYMBOL) | id_map$SYMBOL=="", id_map$symbol, id_map$SYMBOL)
+
+# names(gene_ranks)가 ENTREZ인 경우 SYMBOL로 치환 (선택사항)
+if (all(grepl("^[0-9]+$", names(gene_ranks)))) {
+  m <- id_map$SYMBOL[match(names(gene_ranks), id_map$entrez)]
+  keep <- !is.na(m) & m != ""
+  gene_ranks <- gene_ranks[keep]
+  names(gene_ranks) <- m[keep]
+}
+
+# 4) .rnk 저장 (헤더 없이 탭 구분)
+dir.create("results/gsea", recursive = TRUE, showWarnings = FALSE)
+rnk_path <- "results/gsea/my_ranked_list.rnk"
+write.table(
+  data.frame(gene=names(gene_ranks), score=as.numeric(gene_ranks)),
+  file = rnk_path, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE
+)
+rnk_path
