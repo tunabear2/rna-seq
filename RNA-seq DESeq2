@@ -113,3 +113,9 @@ res_df <- res_df %>%
     symbol = ifelse(!is.na(SYMBOL), SYMBOL, gene_id),  # 심볼 없으면 원래 ID 유지
     entrez = ENTREZID
   )
+
+# 저장 + MA Plot
+readr::write_csv(res_df, "results/tables/deseq2_results.csv")
+png("results/figs/MAplot.png", width=1200, height=900, res=160)
+plotMA(res, ylim=c(-6,6))
+dev.off()
