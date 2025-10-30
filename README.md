@@ -47,16 +47,16 @@ AWS에 pipeline을 위한 서버 생성 (r5a 2xl)
 
 data sample download
 
--SRR1039508 untreated
+-SRR1039508 untreated  
 -SRR1039509 dex
 
--SRR1039512 untreated
+-SRR1039512 untreated  
 -SRR1039513 dex
 
--SRR1039516 untreated
+-SRR1039516 untreated  
 -SRR1039517 Dex
 
--SRR1039520 untreated
+-SRR1039520 untreated  
 -SRR1039521 Dex
 
 # conda 설치
@@ -98,25 +98,25 @@ make -C builddir
 sudo make -C builddir install
 
 # Apptainer .sif 파일 빠른 사용위한 tool 다운
-1. squashfuse 설치
-sudo yum install -y gcc make fuse3-devel autoconf automake libtool pkg-config git
-git clone https://github.com/vasi/squashfuse.git
-cd squashfuse
-./autogen.sh
-./configure
-make
+1. squashfuse 설치  
+sudo yum install -y gcc make fuse3-devel autoconf automake libtool pkg-config git  
+git clone https://github.com/vasi/squashfuse.git  
+cd squashfuse  
+./autogen.sh  
+./configure  
+make  
 sudo make install
 
-2. gocryptfs 설치
-wget https://github.com/rfjakob/gocryptfs/releases/download/v2.5.1/gocryptfs_v2.5.1_linux-static_amd64.tar.gz
-tar -xzf gocryptfs_v2.5.1_linux-static_amd64.tar.gz
-sudo mv gocryptfs /usr/local/bin/
+2. gocryptfs 설치  
+wget https://github.com/rfjakob/gocryptfs/releases/download/v2.5.1/gocryptfs_v2.5.1_linux-static_amd64.tar.gz  
+tar -xzf gocryptfs_v2.5.1_linux-static_amd64.tar.gz  
+sudo mv gocryptfs /usr/local/bin/  
 gocryptfs -version
 
 # IMAGE 다운받기
-fastp :apptainer build fastp.sif docker://staphb/fastp:1.0.1
-최신 버전 image가 없어서 직접 만듬(STAR(2.7.1b), subread(2.1.1)). 옮겨 사용하기
-fastqc : apptainer build fastqc.sif docker://staphb/fastqc:0.12.1
-samtools : apptainer build samtools.sif docker://staphb/samtools:1.22.1
-multiqc : apptainer build multiqc.sif docker://multiqc/multiqc:v1.31
+fastp :apptainer build fastp.sif docker://staphb/fastp:1.0.1  
+최신 버전 image가 없어서 직접 만듬(STAR(2.7.1b), subread(2.1.1)). 옮겨 사용하기  
+fastqc : apptainer build fastqc.sif docker://staphb/fastqc:0.12.1  
+samtools : apptainer build samtools.sif docker://staphb/samtools:1.22.1  
+multiqc : apptainer build multiqc.sif docker://multiqc/multiqc:v1.31  
 rsem : apptainer build rsem.sif docker://mateongenaert/rsem:1.3.3
