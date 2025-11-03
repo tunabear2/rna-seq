@@ -1,3 +1,62 @@
+configfile: "config/config.yaml"
+
+import os
+from glob import glob
+import yaml
+from snakemake.io import expand, glob_wildcaeds
+
+rowdata_dir = config["rowdata_dir"]
+SAMPLES, = glob_wildcards(os.path.join(rowdata_dir, "{sample}_1.fq.gz"))
+
+rule all:
+    input:
+        expand("{trimmed_dir}/{sample}_R1.trimmed.fastq", trimmed_dir=config["trimmed_dir"], sample=SAMPLES),
+        expand("{trimmed_dir}/{sample}_R2.trimmed.fastq", trimmed_dir=config["trimmed_dir"], sample=SAMPLES),
+        expand("results/star/{sample}.Aligned.sortedByCoord.out.bam", sample=SAMPLES),
+        expand("results/star/{sample}.Aligned.toTranscriptome.out.bam", sample=SAMPLES),
+        expand("results/rsem/{sample}.genes.results", sample=SAMPLES),
+        expand("results/rsem/{sample}.isoforms.results", sample=SAMPLES)
+rule fastp:
+    input:
+        r1 = lambda wildcards: f"data/fastq/{wildcards.sample}_1.fastq",
+        r2 = lambda wildcards: f"data/fastq/{wildcards.sample}_2.fastq"
+    output:
+        r1_trimmed = "results/fastp/{sample}_R1.trimmed.fastq",
+        r2_trimmed = "results/fastp/{sample}_R2.trimmed.fastq",
+        html = "results/fastp/{sample}.html",
+        json = "results/fastp/{sample}.json"
+    singularity:
+        config["tools"]["fastp"]
+    shell:
+        "fastp -i {input.r1} -I {input.r2} -o {output.r1_trimmed} -O {output.r2_trimmed} --html {output.html} --json {output.json}"
+rule star:
+    input:
+        idx = "data/star_idx/",
+        r1 = lambda wildcard: f"results/fastp/{wildcard.sample}_R1.trimmed.fastq",
+        r2 = lambda wildcard: f"results/fastp/{wildcard.sample}_R2.trimmed.fastq"
+    output:
+        bam = "results/star/{sample}.Aligned.sortedByCoord.out.bam",
+        tbam = "results/star/{sample}.Aligned.toTranscriptome.out.bam"
+    params:
+        prefix = lambda wc: f"results/star/{wc.sample}."
+    singularity:
+        config["tools"]["star"]
+    shell:
+        "STAR --runThreadN 6 --genomeDir {input.idx} --readFilesIn {input.r1} {input.r2} --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within --outSAMattributes Standard --quantMode TranscriptomeSAM --twopassMode None"
+rule rsem:
+    input:
+        bam_tx = lambda wildcards: f"results/star/{wildcards.sample}.Aligned.toTranscriptome.out.bam"
+    output:
+        gene = "results/rsem/{sample}.genes.results",
+        iso = "results/rsem/{sample}.isoforms.results"
+    singularity:
+        config["tools"]["rsem"]
+    params:
+        output_prefix = lambda wc: f"results/rsem/{wc.sample}"
+    shell:
+        "rsem-calculate-expression --paired-end --alignments --fai data/reference/GRCh38.p14.genome.fa.fai --strandedness reverse --estimate-rspd --calc-pme --no-bam-output {input.bam_tx} data/rsem/rsem_genv49_GR38p14 {params.output_prefix}"
+------------------------------
+
 data/fastq/ 아래에 보고서 표의 파일들이 그대로 있어야 해요
 예: prom1_TdT_1_1.fq.gz, prom1_TdT_1_2.fq.gz, …
 
