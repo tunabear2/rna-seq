@@ -81,7 +81,9 @@ conda install -c conda-forge tmux
 conda install -c conda-forge -c bioconda -c nodefaults snakemake
 
 # Apptainer 설치 (aws linux 2023 기준)
-sudo yum update -y sudo yum groupinstall "Development Tools" -y sudo yum install -y golang git wget squashfs-tools libseccomp-devel cryptsetup runc
+sudo yum update -y   
+sudo yum groupinstall "Development Tools" -y  
+sudo yum install -y golang git wget squashfs-tools libseccomp-devel cryptsetup runc
 
 export VERSION=1.4.1 # 최신 버전 확인: https://github.com/apptainer/apptainer/releases
 
