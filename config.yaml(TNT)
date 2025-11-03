@@ -1,0 +1,14 @@
+rowdata_dir: "data/fastq"
+rsem_prefix: "data/rsem/rsem_genv49_GR38p14"
+
+trimmed_dir: "results/fastp"
+fastqc_dir: "results/fastqc"
+
+ref: data/reference/GRCh38.p14.genome.fa
+gtf: data/reference/gencode.v49.annotation.gtf
+
+tools:
+  fastqc: "tools/fastqc.sif"
+  fastp: "tools/fastp.sif"
+  star: "tools/star.sif"
+  rsem: "tools/rsem.sif"
