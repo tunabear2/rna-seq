@@ -68,13 +68,13 @@ bash Miniconda3-latest-Linux-x86_64.sh
 
 source ~/.bashrc (conda 적용하기) 
 
-#data sample download
-NCBI의 SRR 데이터 사용.
-#다운로드를 위해 sra-tools 설치
-conda create -n sra -c conda-forge -c bioconda sra-tools=3.1.1
- fasterq-dump (sample 번호,ex SRR1039508) --split-files --threads 8 로 sample 8개 다운
-#빠른 다운로드를 위해 tmux 설치
-conda install -c conda-forge tmux
+#data sample download  
+NCBI의 SRR 데이터 사용.  
+#다운로드를 위해 sra-tools 설치  
+conda create -n sra -c conda-forge -c bioconda sra-tools=3.1.1  
+ fasterq-dump (sample 번호,ex SRR1039508) --split-files --threads 8 로 sample 8개 다운  
+#빠른 다운로드를 위해 tmux 설치  
+conda install -c conda-forge tmux  
 여러개 창 띄워서 다운로드 진행
 
 # snakemake 설치 (version 9.13.2)
