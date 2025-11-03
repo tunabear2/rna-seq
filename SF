@@ -6,7 +6,7 @@ import yaml
 from snakemake.io import expand, glob_wildcards
 
 rowdata_dir = config["rowdata_dir"]
-SAMPLES, = glob_wildcards(os.path.join(rowdata_dir, "{sample}_1.fq."))
+SAMPLES, = glob_wildcards(os.path.join(rowdata_dir, "{sample}_1.fq"))
 
 rule all:
     input:
