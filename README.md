@@ -60,13 +60,13 @@ data sample download
 -SRR1039521 Dex
 
 # conda 설치
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh  #mac은 curl -L -O https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh 
 
-bash Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh #bash Miniconda3-latest-MacOSX-arm64.sh
 
-~/miniconda3/bin/conda init
+~/miniconda3/bin/conda init  #~/miniconda3/bin/conda init zsh
 
-source ~/.bashrc (conda 적용하기) 
+source ~/.bashrc (conda 적용하기)  #source ~/.zshrc
 
 #data sample download  
 NCBI의 SRR 데이터 사용.  
