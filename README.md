@@ -8,8 +8,6 @@ TdT vs TdT Transwell, prom1_TdT vs prom1_TdT Transwell (prominin 1 처리 유무
 샘플당 3개
 > 실습 시 3개 sample로 진행하기.
 
-merge나 concatenate 할지 말지 고려하기.
-
 # workflow
 
 1. align reference 준비
