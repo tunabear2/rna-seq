@@ -64,7 +64,7 @@ library(AnnotationDbi)
 library(biomaRt)
 library(circlize)
 library(msigdbr)
-
+-----------------------------------------------------------------------------------------------------------------------
 rsem_dir <- "C:/Users/rkawk/rsem"
 files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
 stopifnot(length(files) > 1)
@@ -111,7 +111,101 @@ res_df <- res_df %>%
   )
 
 write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/prom1_TdT_TW vs TdT_TW.xlsx")
+--------------------------------------------------------------------------------------------------------------
+rsem_dir <- "C:/Users/rkawk/rsem"
+files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
+stopifnot(length(files) > 1)
 
+samples <- sub("\\.genes\\.results$", "", basename(files))
+names(files) <- samples
+
+group <- ifelse(grepl("TdT_TW", samples), "TdT_TW", "TdT")
+condition <- factor(group, levels = c("TdT_TW","TdT"))
+
+coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
+
+condition
+data.frame(samples, condition)
+
+txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
+                countsFromAbundance = "no")
+txi$length[txi$length == 0] <- 1
+
+dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ condition)
+
+dds <- DESeq(dds)
+
+res <- results(dds,contrast = c("condition", "TdT", "TdT_TW"))
+
+res_df <- as.data.frame(res)
+res_df$gene_id <- rownames(res_df)
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(res_df$gene_id),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+res_df <- res_df %>%
+  dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
+
+res_df <- res_df %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
+  )
+
+write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/TdT vs TdT_TW.xlsx")
+----------------------------------------------------------------------------------------------------------
+rsem_dir <- "C:/Users/rkawk/rsem"
+files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
+stopifnot(length(files) > 1)
+
+samples <- sub("\\.genes\\.results$", "", basename(files))
+names(files) <- samples
+
+group <- ifelse(grepl("prom1_TdT", samples), "prom1_TdT", "TdT")
+condition <- factor(group, levels = c("prom1_TdT","TdT"))
+
+coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
+
+condition
+data.frame(samples, condition)
+
+txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
+                countsFromAbundance = "no")
+txi$length[txi$length == 0] <- 1
+
+dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ condition)
+
+dds <- DESeq(dds)
+
+res <- results(dds,contrast = c("condition", "TdT", "prom1_TdT"))
+
+res_df <- as.data.frame(res)
+res_df$gene_id <- rownames(res_df)
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(res_df$gene_id),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+res_df <- res_df %>%
+  dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
+
+res_df <- res_df %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
+  )
+
+write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/TdT vs prom1_TdT.xlsx")
+------------------------------------------------------------------------------------------------
 # 저장 + MA Plot
 readr::write_csv(res_df, "results/tables/deseq2_results.csv")
 png("results/figs/MAplot.png", width=1200, height=900, res=160)
