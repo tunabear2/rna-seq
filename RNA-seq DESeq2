@@ -65,8 +65,6 @@ library(biomaRt)
 library(circlize)
 library(msigdbr)
 
-samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
-
 rsem_dir <- "C:/Users/rkawk/rsem"
 files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
 stopifnot(length(files) > 1)
@@ -74,13 +72,12 @@ stopifnot(length(files) > 1)
 samples <- sub("\\.genes\\.results$", "", basename(files))
 names(files) <- samples
 
-condition <- factor(rep(c("Control","Treat"), times = length(samples)/2),
-                    levels = c("Control","Treat"))
-
+condition <- factor(rep(c("prom1_TdT","prom1_TdT_TW"), each = 3),
+                    levels = c("prom1_TdT","prom1_TdT_TW"))
 coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
 
 condition
-data.frame(samples, condition) # 확인용
+data.frame(samples, condition)
 
 txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
                 countsFromAbundance = "no")
