@@ -72,8 +72,9 @@ stopifnot(length(files) > 1)
 samples <- sub("\\.genes\\.results$", "", basename(files))
 names(files) <- samples
 
-condition <- factor(rep(c("prom1_TdT","prom1_TdT_TW"), each = 3),
-                    levels = c("prom1_TdT","prom1_TdT_TW"))
+group <- ifelse(grepl("prom1_TdT_TW", samples), "prom1_TdT_TW", "TdT_TW")
+condition <- factor(group, levels = c("TdT_TW","prom1_TdT_TW"))
+
 coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
 
 condition
@@ -83,21 +84,11 @@ txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
                 countsFromAbundance = "no")
 txi$length[txi$length == 0] <- 1
 
-coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
-
-condition
-data.frame(samples, condition) # 확인용
-
-txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
-                countsFromAbundance = "no")
-
-txi$length[txi$length == 0] <- 1
-
 dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ condition)
 
 dds <- DESeq(dds)
 
-res <- results(dds,contrast = c("condition", "prom1_TdT_TW", "prom1_TdT"))
+res <- results(dds,contrast = c("condition", "prom1_TdT_TW", "TdT_TW"))
 
 res_df <- as.data.frame(res)
 res_df$gene_id <- rownames(res_df)
@@ -118,6 +109,8 @@ res_df <- res_df %>%
     SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
     ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
   )
+
+write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/prom1_TdT_TW vs TdT_TW.xlsx")
 
 # 저장 + MA Plot
 readr::write_csv(res_df, "results/tables/deseq2_results.csv")
