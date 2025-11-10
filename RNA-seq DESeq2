@@ -81,6 +81,15 @@ data.frame(samples, condition)
 
 txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
                 countsFromAbundance = "no")
+txi$length[txi$length == 0] <- 1
+
+coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
+
+condition
+data.frame(samples, condition) # 확인용
+
+txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
+                countsFromAbundance = "no")
 
 txi$length[txi$length == 0] <- 1
 
@@ -88,29 +97,26 @@ dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ conditi
 
 dds <- DESeq(dds)
 
-res <- results(dds, contrast = c("condition", "Treat", "Control"))
-res <- lfcShrink(dds, coef = "condition_Treat_vs_Control", type = "apeglm")
+res <- results(dds,contrast = c("condition", "prom1_TdT_TW", "prom1_TdT"))
 
 res_df <- as.data.frame(res)
 res_df$gene_id <- rownames(res_df)
 
-res_df <- res_df %>%
-  dplyr::mutate(ensembl_core = sub("\\.\\d+$", "", gene_id))
-
 map_orgdb <- AnnotationDbi::select(
   org.Hs.eg.db,
-  keys    = unique(res_df$ensembl_core),
+  keys    = unique(res_df$gene_id),
   keytype = "ENSEMBL",
   columns = c("SYMBOL", "ENTREZID")
 ) %>% 
   dplyr::distinct(ENSEMBL, .keep_all = TRUE)
 
 res_df <- res_df %>%
-  dplyr::left_join(map_orgdb, by = c("ensembl_core" = "ENSEMBL")) %>%
-  dplyr::mutate(
-    SYMBOL = dplyr::na_if(SYMBOL, ""),                 # 빈 문자열 → NA
-    symbol = ifelse(!is.na(SYMBOL), SYMBOL, gene_id),  # 심볼 없으면 원래 ID 유지
-    entrez = ENTREZID
+  dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
+
+res_df <- res_df %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
   )
 
 # 저장 + MA Plot
