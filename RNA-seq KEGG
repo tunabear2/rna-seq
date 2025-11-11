@@ -1,62 +1,20 @@
-samples <- c("SRR1039508","SRR1039509","SRR1039512","SRR1039513","SRR1039516","SRR1039517","SRR1039520","SRR1039521")
+1. prom1_TdT_TW vs prom1_TdT
 
-rsem_dir <- "C:/Users/rkawk/rsem"
-files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
-stopifnot(length(files) > 1)
-
-samples <- sub("\\.genes\\.results$", "", basename(files))
-names(files) <- samples
-
-condition <- factor(rep(c("Control","Treat"), times = length(samples)/2),
-                    levels = c("Control","Treat"))
-
-coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
-
-condition
-data.frame(samples, condition) # 확인용
-
-txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
-                countsFromAbundance = "no")
-
-txi$length[txi$length == 0] <- 1
-
-dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ condition)
-
-dds <- DESeq(dds)
-
-res <- results(dds, contrast = c("condition", "Treat", "Control"))
-res <- lfcShrink(dds, coef = "condition_Treat_vs_Control", type = "apeglm")
-
-res_df <- as.data.frame(res)
-res_df$gene_id <- rownames(res_df)
-
-res_df <- res_df %>%
-  dplyr::mutate(ensembl_core = sub("\\.\\d+$", "", gene_id))
-
-map_orgdb <- AnnotationDbi::select(
-  org.Hs.eg.db,
-  keys    = unique(res_df$ensembl_core),
-  keytype = "ENSEMBL",
-  columns = c("SYMBOL", "ENTREZID")
-) %>% 
-  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
-
-res_df <- res_df %>%
-  dplyr::left_join(map_orgdb, by = c("ensembl_core" = "ENSEMBL")) %>%
-  dplyr::mutate(
-    SYMBOL = dplyr::na_if(SYMBOL, ""),                 # 빈 문자열 → NA
-    symbol = ifelse(!is.na(SYMBOL), SYMBOL, gene_id),  # 심볼 없으면 원래 ID 유지
-    entrez = ENTREZID
-  )
-
-outdir <- "results/kegg"
+outdir <- "rsem/results/kegg"
 dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
 
-bg_entrez  <- res_df$entrez %>% unique() %>% na.omit() %>% as.character()
+bg_entrez <- res_df$ENTREZID %>% unique() %>% na.omit()
+
+ent <- as.character(res_df$ENTREZID)
+keep <- !is.na(ent) & grepl("^[0-9]+$", ent)
+bg_entrez <- unique(ent[keep])
+
 sig_entrez <- res_df %>%
-  filter(!is.na(entrez), !is.na(padj)) %>%
-  filter(padj < 0.05, abs(log2FoldChange) >= 1) %>%
-  pull(entrez) %>% unique() %>% as.character()
+  filter(!is.na(ENTREZID), !is.na(padj)) %>%
+  filter(padj < 0.05, abs(log2FoldChange) >= 0.585) %>%
+  pull(ENTREZID) %>% unique()
+
+length(bg_entrez); length(sig_entrez)
 
 ekegg <- enrichKEGG(
   gene      = sig_entrez,
@@ -65,7 +23,7 @@ ekegg <- enrichKEGG(
   keyType   = "ncbi-geneid",
   pAdjustMethod = "BH",
   pvalueCutoff  = 0.05,
-  qvalueCutoff  = 0.2,
+  qvalueCutoff  = 0.05,
   minGSSize     = 10
 )
 
@@ -73,17 +31,113 @@ ekegg_r <- setReadable(ekegg, OrgDb = org.Hs.eg.db, keyType = "ENTREZID")
 
 if (!is.null(ekegg_r) && nrow(as.data.frame(ekegg_r)) > 0) {
   p_dot <- dotplot(ekegg_r, showCategory = 20) + ggtitle("KEGG ORA — dotplot")
-  ggsave(file.path(outdir, "kegg_ora_dotplot.png"), p_dot, width = 10, height = 8, dpi = 300)
+  ggsave(file.path(outdir, "prom1_TdT_TW vs prom1_TdT kegg_ora_dotplot.png"), p_dot, width = 10, height = 8, dpi = 300)
   
   p_bar <- barplot(ekegg_r, showCategory = 20) + ggtitle("KEGG ORA — barplot")
-  ggsave(file.path(outdir, "kegg_ora_barplot.png"), p_bar, width = 10, height = 8, dpi = 300)
+  ggsave(file.path(outdir, "prom1_TdT_TW vs prom1_TdT kegg_ora_barplot.png"), p_bar, width = 10, height = 8, dpi = 300)
   
   # 네트워크류(선택)
   if (nrow(as.data.frame(ekegg_r)) >= 3) {
     p_cnet <- cnetplot(ekegg_r, showCategory = 10)
-    ggsave(file.path(outdir, "kegg_ora_cnetplot.png"), p_cnet, width = 10, height = 8, dpi = 300)
+    ggsave(file.path(outdir, "prom1_TdT_TW vs prom1_TdT kegg_ora_cnetplot.png"), p_cnet, width = 10, height = 8, dpi = 300)
   }
   write.csv(as.data.frame(ekegg_r),
-            file = file.path(outdir, "kegg_ora_results.csv"),
+            file = file.path(outdir, "prom1_TdT_TW vs prom1_TdT kegg_ora_results.csv"),
+            row.names = FALSE)
+}
+---------------------------------------------------------------------------------------------------------------------------------
+2. prom1_TdT_TW vs TdT_TW
+
+outdir <- "rsem/results/kegg"
+dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+
+bg_entrez <- res_df$ENTREZID %>% unique() %>% na.omit()
+
+ent <- as.character(res_df$ENTREZID)
+keep <- !is.na(ent) & grepl("^[0-9]+$", ent)
+bg_entrez <- unique(ent[keep])
+
+sig_entrez <- res_df %>%
+  filter(!is.na(ENTREZID), !is.na(padj)) %>%
+  filter(padj < 0.05, abs(log2FoldChange) >= 0.585) %>%
+  pull(ENTREZID) %>% unique()
+
+length(bg_entrez); length(sig_entrez)
+
+ekegg <- enrichKEGG(
+  gene      = sig_entrez,
+  universe  = bg_entrez,
+  organism  = "hsa",
+  keyType   = "ncbi-geneid",
+  pAdjustMethod = "BH",
+  pvalueCutoff  = 0.05,
+  qvalueCutoff  = 0.05,
+  minGSSize     = 10
+)
+
+ekegg_r <- setReadable(ekegg, OrgDb = org.Hs.eg.db, keyType = "ENTREZID")
+
+if (!is.null(ekegg_r) && nrow(as.data.frame(ekegg_r)) > 0) {
+  p_dot <- dotplot(ekegg_r, showCategory = 20) + ggtitle("KEGG ORA — dotplot")
+  ggsave(file.path(outdir, "prom1_TdT_TW vs TdT_TW kegg_ora_dotplot.png"), p_dot, width = 10, height = 8, dpi = 300)
+  
+  p_bar <- barplot(ekegg_r, showCategory = 20) + ggtitle("KEGG ORA — barplot")
+  ggsave(file.path(outdir, "prom1_TdT_TW vs TdT_TW kegg_ora_barplot.png"), p_bar, width = 10, height = 8, dpi = 300)
+  
+  # 네트워크류(선택)
+  if (nrow(as.data.frame(ekegg_r)) >= 3) {
+    p_cnet <- cnetplot(ekegg_r, showCategory = 10)
+    ggsave(file.path(outdir, "prom1_TdT_TW vs TdT_TW kegg_ora_cnetplot.png"), p_cnet, width = 10, height = 8, dpi = 300)
+  }
+  write.csv(as.data.frame(ekegg_r),
+            file = file.path(outdir, "prom1_TdT_TW vs TdT_TW kegg_ora_results.csv"),
+            row.names = FALSE)
+}
+-------------------------------------------------------------------------------------------------------------------------
+3. TdT_TW vs TdT
+
+outdir <- "rsem/results/kegg"
+dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+
+bg_entrez <- res_df$ENTREZID %>% unique() %>% na.omit()
+
+ent <- as.character(res_df$ENTREZID)
+keep <- !is.na(ent) & grepl("^[0-9]+$", ent)
+bg_entrez <- unique(ent[keep])
+
+sig_entrez <- res_df %>%
+  filter(!is.na(ENTREZID), !is.na(padj)) %>%
+  filter(padj < 0.05, abs(log2FoldChange) >= 0.585) %>%
+  pull(ENTREZID) %>% unique()
+
+length(bg_entrez); length(sig_entrez)
+
+ekegg <- enrichKEGG(
+  gene      = sig_entrez,
+  universe  = bg_entrez,
+  organism  = "hsa",
+  keyType   = "ncbi-geneid",
+  pAdjustMethod = "BH",
+  pvalueCutoff  = 0.05,
+  qvalueCutoff  = 0.05,
+  minGSSize     = 10
+)
+
+ekegg_r <- setReadable(ekegg, OrgDb = org.Hs.eg.db, keyType = "ENTREZID")
+
+if (!is.null(ekegg_r) && nrow(as.data.frame(ekegg_r)) > 0) {
+  p_dot <- dotplot(ekegg_r, showCategory = 20) + ggtitle("KEGG ORA — dotplot")
+  ggsave(file.path(outdir, "TdT_TW vs TdT kegg_ora_dotplot.png"), p_dot, width = 10, height = 8, dpi = 300)
+  
+  p_bar <- barplot(ekegg_r, showCategory = 20) + ggtitle("KEGG ORA — barplot")
+  ggsave(file.path(outdir, "TdT_TW vs TdT kegg_ora_barplot.png"), p_bar, width = 10, height = 8, dpi = 300)
+  
+  # 네트워크류(선택)
+  if (nrow(as.data.frame(ekegg_r)) >= 3) {
+    p_cnet <- cnetplot(ekegg_r, showCategory = 10)
+    ggsave(file.path(outdir, "TdT_TW vs TdT kegg_ora_cnetplot.png"), p_cnet, width = 10, height = 8, dpi = 300)
+  }
+  write.csv(as.data.frame(ekegg_r),
+            file = file.path(outdir, "TdT_TW vs TdT kegg_ora_results.csv"),
             row.names = FALSE)
 }
