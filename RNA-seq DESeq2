@@ -70,7 +70,7 @@ library(msigdbr)
 library(magick)
 library(ragg)
 -----------------------------------------------------------------------------------------------------------------------
-(1) "prom1_TdT_TW", "prom1_TdT"
+(1) prom1_TdT_TW vs prom1_TdT
 
 rsem_dir <- "C:/Users/rkawk/rsem"
 files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
@@ -117,7 +117,7 @@ res_df <- res_df %>%
     ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
   )
 ------------------------------------------------------------------------------------------------------
-(2) "prom1_TdT_TW", "TdT_TW"
+(2) prom1_TdT_TW vs TdT_TW
 
 rsem_dir <- "C:/Users/rkawk/rsem"
 files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
@@ -166,7 +166,7 @@ res_df <- res_df %>%
 
 write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/prom1_TdT_TW vs TdT_TW.xlsx")
 --------------------------------------------------------------------------------------------------------------
-(3) "TdT_TW", "TdT"
+(3) TdT_TW vs TdT
 
 rsem_dir <- "C:/Users/rkawk/rsem"
 files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
@@ -215,7 +215,7 @@ res_df <- res_df %>%
 
 write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/TdT vs TdT_TW.xlsx")
 ----------------------------------------------------------------------------------------------------------
-(4) "prom1_TdT", "TdT"
+(4) prom1_TdT vs TdT
 
 rsem_dir <- "C:/Users/rkawk/rsem"
 files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
