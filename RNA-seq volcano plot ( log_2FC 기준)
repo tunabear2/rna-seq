@@ -237,3 +237,12 @@ print(volcanoplot)
 
 ttt <- data.frame(rank = seq_along(label_top), label_top = label_top)
 write_xlsx(ttt, "C:/Users/rkawk/rsem/label_top(TdT vs prom1_TdT).xlsx")
+---------------------------------------------------------------------------------------------------
+5. padj 버전은 이 부분만 수정
+
+topN <- 15
+label_top <- df_plot %>%
+  filter(sig != "NS", !is.na(padj)) %>%
+  arrange(padj, desc(abs(log2FC))) %>%
+  slice_head(n = topN) %>%
+  pull(SYMBOL)
