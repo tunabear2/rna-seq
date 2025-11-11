@@ -9,7 +9,7 @@ res_use <- res_df %>%
 
 outdir <- "C:/Users/rkawk/rsem/gsea_input"
 dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
-write.table(res_use,
+write.table(res_use[, c("SYMBOL","stat")],
             file = file.path(outdir, "prom1_TdT_TW vs prom1_TdT.preranked.rnk"),
             sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
 ------------------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ res_use <- res_df %>%
 
 outdir <- "C:/Users/rkawk/rsem/gsea_input"
 dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
-write.table(res_use,
+write.table(res_use[, c("SYMBOL","stat")],
             file = file.path(outdir, "prom1_TdT_TW vs TdT_TW.preranked.rnk"),
             sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
 
@@ -34,7 +34,7 @@ res_use <- res_df %>%
 
 outdir <- "C:/Users/rkawk/rsem/gsea_input"
 dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
-write.table(res_use,
+write.table(res_use[, c("SYMBOL","stat")],
             file = file.path(outdir, "TdT_vs_TdT_TW.preranked.rnk"),
             sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
 --------------------------------------------------------------------------------------------
@@ -46,6 +46,6 @@ res_use <- res_df %>%
 
 outdir <- "C:/Users/rkawk/rsem/gsea_input"
 dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
-write.table(res_use,
+write.table(res_use[, c("SYMBOL","stat")],
             file = file.path(outdir, "prom1_TdT vs TdT.preranked.rnk"),
             sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
