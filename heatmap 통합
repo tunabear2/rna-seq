@@ -62,6 +62,8 @@ message(sprintf("선택된 유전자 수: %d (요청: %d)", nrow(sel_df), topN))
 top_genes <- sel_df$gene_id
 if (length(top_genes) == 0) stop("조건을 만족하는 유전자가 없습니다. 임계값을 완화해 보세요.")
 
+ttt <- data.frame(rank = seq_along(top_genes), top_genes = top_genes)
+write_xlsx(ttt, "C:/Users/rkawk/rsem/padj_label_top500(prom1_TdT_TW vs prom1_TdT).xlsx")
 --------------------------------------------------------------------------------------------------
 2. top gene을 뽑은 다음에 모든 샘플을 가지고 진행.
 
