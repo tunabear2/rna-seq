@@ -1,0 +1,162 @@
+1. 비교군에서 top gene 뽑는 과정 (비교군만 변경하기)
+
+rsem_dir <- "C:/Users/rkawk/rsem"
+files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
+stopifnot(length(files) > 1)
+
+samples <- sub("\\.genes\\.results$", "", basename(files))
+names(files) <- samples
+
+group <- ifelse(grepl("prom1_TdT_TW", samples), "prom1_TdT_TW", "prom1_TdT")
+condition <- factor(group, levels = c("prom1_TdT","prom1_TdT_TW"))
+
+coldata <- data.frame(sample = samples, condition = condition, row.names = samples)
+
+condition
+data.frame(samples, condition)
+
+txi <- tximport(files, type = "rsem", txIn = FALSE, txOut = FALSE,
+                countsFromAbundance = "no")
+txi$length[txi$length == 0] <- 1
+
+dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ condition)
+
+dds <- DESeq(dds)
+
+res <- results(dds,contrast = c("condition", "prom1_TdT_TW", "prom1_TdT"))
+
+res_df <- as.data.frame(res)
+res_df$gene_id <- rownames(res_df)
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(res_df$gene_id),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+res_df <- res_df %>%
+  dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
+
+res_df <- res_df %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
+  )
+
+topN <- 500
+alpha <- 0.05
+lfc_thr <- 0.585
+
+lfc_col <- if ("log2FC" %in% names(res_df)) "log2FC" else "log2FoldChange"
+
+sel_df <- res_df %>%
+  filter(!is.na(.data[[lfc_col]]), !is.na(padj)) %>%
+  filter(padj < alpha, abs(.data[[lfc_col]]) >= lfc_thr) %>%
+  arrange(padj, desc(abs(.data[[lfc_col]]))) %>%
+  slice_head(n = topN)
+
+message(sprintf("선택된 유전자 수: %d (요청: %d)", nrow(sel_df), topN))
+
+top_genes <- sel_df$gene_id
+if (length(top_genes) == 0) stop("조건을 만족하는 유전자가 없습니다. 임계값을 완화해 보세요.")
+
+--------------------------------------------------------------------------------------------------
+2. top gene을 뽑은 다음에 모든 샘플을 가지고 진행.
+
+rsem_dir <- "C:/Users/rkawk/rsem"
+files_all <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
+stopifnot(length(files_all) > 1)
+samples_all <- sub("\\.genes\\.results$", "", basename(files_all))
+names(files_all) <- samples_all
+
+group_all <- dplyr::case_when(
+  grepl("^prom1_TdT_TW", samples_all) ~ "prom1_TdT_TW",
+  grepl("^prom1_TdT",    samples_all) ~ "prom1_TdT",
+  grepl("^TdT_TW",       samples_all) ~ "TdT_TW",
+  grepl("^TdT",          samples_all) ~ "TdT",
+  TRUE ~ "other"
+)
+condition_all <- factor(group_all, levels = c("prom1_TdT","prom1_TdT_TW","TdT","TdT_TW"))
+coldata_all <- data.frame(sample = samples_all, condition = condition_all, row.names = samples_all)
+
+txi_all <- tximport(files_all, type = "rsem", txIn = FALSE, txOut = FALSE,
+                    countsFromAbundance = "no")
+txi_all$length[is.na(txi_all$length) | txi_all$length <= 0] <- 1
+
+strip_ver <- function(x) sub("\\.\\d+$", "", x)
+for (nm in intersect(c("counts","abundance","length"), names(txi_all))) {
+  rownames(txi_all[[nm]]) <- strip_ver(rownames(txi_all[[nm]]))
+}
+
+dds_all <- DESeqDataSetFromTximport(txi = txi_all, colData = coldata_all, design = ~ condition)
+dds_all <- DESeq(dds_all)
+
+vsd_all <- vst(dds_all, blind = FALSE)
+
+all_genes <- rownames(assay(vsd_all))
+keep_genes <- intersect(top_genes, all_genes)
+if (length(keep_genes) < length(top_genes)) {
+  message(sprintf("주의: 통합 데이터에 없는 유전자가 %d개 제외됨.",
+                  length(top_genes) - length(keep_genes)))
+}
+
+# 2) 모든 샘플(4군) 대상으로 행렬 뽑고 행 z-score
+mat_all <- assay(vsd_all)[keep_genes, , drop = FALSE]
+mat_all_z <- t(scale(t(mat_all)))
+mat_all_z[is.na(mat_all_z)] <- 0
+
+# 3) 행 라벨: SYMBOL 우선, 없으면 gene_id
+row_labels <- res_df %>% dplyr::select(gene_id, SYMBOL) %>% dplyr::distinct(gene_id, .keep_all = TRUE)
+lab <- row_labels$SYMBOL[match(rownames(mat_all_z), row_labels$gene_id)]
+lab[is.na(lab) | lab == ""] <- rownames(mat_all_z)
+lab <- make.unique(lab)
+rownames(mat_all_z) <- lab
+
+# 4) 열(샘플) 주석/색 (4개 레벨)
+cond_levels <- c("prom1_TdT","prom1_TdT_TW","TdT","TdT_TW")
+cond_all_f  <- factor(condition_all, levels = cond_levels)
+
+# 주석 데이터프레임은 열 순서와 rownames를 반드시 맞추기
+sample_anno_df <- data.frame(condition = cond_all_f)
+rownames(sample_anno_df) <- colnames(mat_all_z)
+
+cond_cols <- setNames(
+  c("#4C78A8", "#F58518", "#54A24B", "#E45756"),
+  cond_levels
+)
+
+ha_all <- HeatmapAnnotation(
+  df  = sample_anno_df,
+  col = list(condition = cond_cols),
+  which = "column",
+  show_annotation_name = TRUE,
+  annotation_name_side = "left"
+)
+
+# 5) 컬럼을 군별로 나눠 보기 좋게 column_split 사용 (군 내부만 클러스터링)
+col_fun <- colorRamp2(c(-2, 0, 2), c("#313695", "#FFFFFF", "#A50026"))
+
+ht_all <- Heatmap(
+  mat_all_z,
+  name = "z-score",
+  top_annotation = ha_all,
+  col = col_fun,
+  cluster_rows = TRUE,
+  cluster_columns = TRUE,
+  show_row_names = FALSE,
+  show_column_names = TRUE,
+  column_split = NULL,            # ← 군 별 블록 나눔 
+  column_title = "prom1_TdT_TW vs prom1_TdT genes across 4 groups",
+  row_title = "Genes",
+  column_names_gp = grid::gpar(fontsize = 9),
+  use_raster = TRUE,
+  raster_quality = 2
+)
+
+draw(ht_all)
+
+ragg::agg_png("prom1_TdT_TW vs prom1_TdT genes across 4 groups.png", width = 2000, height = 2400, res = 300)
+draw(ht_all)
+dev.off()
