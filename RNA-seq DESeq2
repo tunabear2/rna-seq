@@ -119,6 +119,8 @@ res_df <- res_df %>%
 
 res_df <- res_df %>%
   dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
+
+write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/prom1_TdT_TW vs prom1_TdT.xlsx")
 ------------------------------------------------------------------------------------------------------
 (2) prom1_TdT_TW vs TdT_TW
 
