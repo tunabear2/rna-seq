@@ -1,6 +1,6 @@
 1. "prom1_TdT_TW", "prom1_TdT"
 
-lfc_cut <- 0.585
+lfc_cut <- 1
 fdr_cut <- 0.05
 
 df_plot <- res_df %>%
@@ -18,8 +18,9 @@ df_plot <- res_df %>%
 
 topN <- 15
 label_top <- df_plot %>%
-  filter(sig != "NS") %>%
-  slice_max(abs(log2FC), n = topN, with_ties = FALSE) %>%
+  filter(sig != "NS", !is.na(padj)) %>%
+  arrange(padj, desc(abs(log2FC))) %>%
+  slice_head(n = topN) %>%
   pull(SYMBOL)
 
 df_plot <- df_plot %>%
@@ -61,7 +62,7 @@ write_xlsx(ttt, "C:/Users/rkawk/rsem/label_top(prom1_TdT vs prom1_TdT_TW).xlsx")
 2. "prom1_TdT_TW", "TdT_TW"
 
 
-lfc_cut <- 0.585
+lfc_cut <- 1
 fdr_cut <- 0.05
 
 df_plot <- res_df %>%
@@ -79,8 +80,9 @@ df_plot <- res_df %>%
 
 topN <- 15
 label_top <- df_plot %>%
-  filter(sig != "NS") %>%
-  slice_max(abs(log2FC), n = topN, with_ties = FALSE) %>%
+  filter(sig != "NS", !is.na(padj)) %>%
+  arrange(padj, desc(abs(log2FC))) %>%
+  slice_head(n = topN) %>%
   pull(SYMBOL)
 
 df_plot <- df_plot %>%
@@ -122,7 +124,7 @@ write_xlsx(ttt, "C:/Users/rkawk/rsem/label_top(TdT_TW vs prom1_TdT_TW).xlsx")
 3. TdT vs TdT_TW
 
 
-lfc_cut <- 0.585
+lfc_cut <- 1
 fdr_cut <- 0.05
 
 df_plot <- res_df %>%
@@ -140,8 +142,9 @@ df_plot <- res_df %>%
 
 topN <- 15
 label_top <- df_plot %>%
-  filter(sig != "NS") %>%
-  slice_max(abs(log2FC), n = topN, with_ties = FALSE) %>%
+  filter(sig != "NS", !is.na(padj)) %>%
+  arrange(padj, desc(abs(log2FC))) %>%
+  slice_head(n = topN) %>%
   pull(SYMBOL)
 
 df_plot <- df_plot %>%
@@ -181,7 +184,7 @@ write_xlsx(ttt, "C:/Users/rkawk/rsem/label_top(TdT vs TdT_TW).xlsx")
 ------------------------------------------------------------------------------------------------------------
 4. "prom1_TdT", "TdT"
 
-lfc_cut <- 0.585
+lfc_cut <- 1
 fdr_cut <- 0.05
 
 df_plot <- res_df %>%
@@ -199,8 +202,9 @@ df_plot <- res_df %>%
 
 topN <- 15
 label_top <- df_plot %>%
-  filter(sig != "NS") %>%
-  slice_max(abs(log2FC), n = topN, with_ties = FALSE) %>%
+  filter(sig != "NS", !is.na(padj)) %>%
+  arrange(padj, desc(abs(log2FC))) %>%
+  slice_head(n = topN) %>%
   pull(SYMBOL)
 
 df_plot <- df_plot %>%
@@ -238,7 +242,12 @@ print(volcanoplot)
 ttt <- data.frame(rank = seq_along(label_top), label_top = label_top)
 write_xlsx(ttt, "C:/Users/rkawk/rsem/label_top(TdT vs prom1_TdT).xlsx")
 ---------------------------------------------------------------------------------------------------
-5. padj 버전은 이 부분만 수정
+5. log2FC 버전은 이 부분만 수정
+
+label_top <- df_plot %>%
+  filter(sig != "NS") %>%
+  slice_max(abs(log2FC), n = topN, with_ties = FALSE) %>%
+  pull(SYMBOL)
 
 topN <- 15
 label_top <- df_plot %>%
