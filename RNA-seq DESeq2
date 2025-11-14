@@ -135,6 +135,22 @@ sig_df <- res_df %>%
   )
 write_xlsx(sig_df,
            path = "C:/Users/rkawk/rsem/prom1_TdT_TW_vs_prom1_TdT_sig_genes.xlsx")
+
+# up gene이나 down gene만 뽑고 싶을 때
+sig_up <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    log2FoldChange >= lfc_cut
+  )
+
+sig_down <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    log2FoldChange <= -lfc_cut
+  )
+
 ------------------------------------------------------------------------------------------------------
 (2) prom1_TdT_TW vs TdT_TW
 
@@ -200,6 +216,22 @@ sig_df <- res_df %>%
   )
 write_xlsx(sig_df,
            path = "C:/Users/rkawk/rsem/prom1_TdT_TW vs TdT_TW sig_genes.xlsx")
+
+# up gene이나 down gene만 뽑고 싶을 때
+sig_up <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    log2FoldChange >= lfc_cut
+  )
+
+sig_down <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    log2FoldChange <= -lfc_cut
+  )
+
 --------------------------------------------------------------------------------------------------------------
 (3) TdT_TW vs TdT
 
@@ -265,6 +297,22 @@ sig_df <- res_df %>%
   )
 write_xlsx(sig_df,
            path = "C:/Users/rkawk/rsem/TdT vs TdT_TW sig_genes.xlsx")
+
+# up gene이나 down gene만 뽑고 싶을 때
+sig_up <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    log2FoldChange >= lfc_cut
+  )
+
+sig_down <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    log2FoldChange <= -lfc_cut
+  )
+
 ----------------------------------------------------------------------------------------------------------
 (4) prom1_TdT vs TdT
 
@@ -330,6 +378,21 @@ sig_df <- res_df %>%
   )
 write_xlsx(sig_df,
            path = "C:/Users/rkawk/rsem/TdT vs prom1_TdT sig_genes.xlsx")
+
+# up gene이나 down gene만 뽑고 싶을 때
+sig_up <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    log2FoldChange >= lfc_cut
+  )
+
+sig_down <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    log2FoldChange <= -lfc_cut
+  )
 
 ------------------------------------------------------------------------------------------------
 # 저장 + MA Plot
