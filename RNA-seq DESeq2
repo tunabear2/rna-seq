@@ -121,6 +121,20 @@ res_df <- res_df %>%
   dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
 
 write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/prom1_TdT_TW vs prom1_TdT.xlsx")
+
+# 필터링 값에 따라 필터링 된 gene list 뽑을거면.
+
+lfc_cut <- 0.585
+fdr_cut <- 0.05
+
+sig_df <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    abs(log2FoldChange) >= lfc_cut
+  )
+write_xlsx(sig_df,
+           path = "C:/Users/rkawk/rsem/prom1_TdT_TW_vs_prom1_TdT_sig_genes.xlsx")
 ------------------------------------------------------------------------------------------------------
 (2) prom1_TdT_TW vs TdT_TW
 
@@ -172,6 +186,20 @@ res_df <- res_df %>%
   dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
 
 write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/prom1_TdT_TW vs TdT_TW.xlsx")
+
+# 필터링 값에 따라 필터링 된 gene list 뽑을거면.
+
+lfc_cut <- 0.585
+fdr_cut <- 0.05
+
+sig_df <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    abs(log2FoldChange) >= lfc_cut
+  )
+write_xlsx(sig_df,
+           path = "C:/Users/rkawk/rsem/prom1_TdT_TW vs TdT_TW sig_genes.xlsx")
 --------------------------------------------------------------------------------------------------------------
 (3) TdT_TW vs TdT
 
@@ -223,6 +251,20 @@ res_df <- res_df %>%
   dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
 
 write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/TdT vs TdT_TW.xlsx")
+
+# 필터링 값에 따라 필터링 된 gene list 뽑을거면.
+
+lfc_cut <- 0.585
+fdr_cut <- 0.05
+
+sig_df <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    abs(log2FoldChange) >= lfc_cut
+  )
+write_xlsx(sig_df,
+           path = "C:/Users/rkawk/rsem/TdT vs TdT_TW sig_genes.xlsx")
 ----------------------------------------------------------------------------------------------------------
 (4) prom1_TdT vs TdT
 
@@ -274,6 +316,21 @@ res_df <- res_df %>%
   dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
 
 write_xlsx(as.data.frame(res_df), path = "C:/Users/rkawk/rsem/TdT vs prom1_TdT.xlsx")
+
+# 필터링 값에 따라 필터링 된 gene list 뽑을거면.
+
+lfc_cut <- 0.585
+fdr_cut <- 0.05
+
+sig_df <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    abs(log2FoldChange) >= lfc_cut
+  )
+write_xlsx(sig_df,
+           path = "C:/Users/rkawk/rsem/TdT vs prom1_TdT sig_genes.xlsx")
+
 ------------------------------------------------------------------------------------------------
 # 저장 + MA Plot
 readr::write_csv(res_df, "results/tables/deseq2_results.csv")
