@@ -57,121 +57,29 @@ rule rsem:
         "rsem-calculate-expression --paired-end --alignments --fai data/reference/GRCh38.p14.genome.fa.fai --strandedness reverse --estimate-rspd --calc-pme --no-bam-output {input.bam_tx} data/rsem/rsem_genv49_GR38p14 {params.output_prefix}"
 ------------------------------
 
-data/fastq/ 아래에 보고서 표의 파일들이 그대로 있어야 해요
-예: prom1_TdT_1_1.fq.gz, prom1_TdT_1_2.fq.gz, …
-
-star_index_dir와 rsem_reference는 이미 생성돼 있어야 해요. (없으면 만들어야 함)
-
-genome_fai는 samtools faidx GRCh38.fa로 생성해 두세요.
-
-컨테이너 경로(또는 모듈 환경)를 네 환경에 맞게 수정.
-
-snakemake -j 8 --use-singularity (환경에 맞게) 실행
-
 configfile: "config/config.yaml"
 
 import os
+from glob import glob
+import yaml
 from snakemake.io import expand, glob_wildcards
 
-rowdata_dir   = config["rowdata_dir"]         # ex) "data/fastq"
-trimmed_dir   = config["trimmed_dir"]         # ex) "results/fastp"
-star_index    = config["star_index_dir"]      # ex) "data/star_idx"
-star_outdir   = config.get("star_outdir", "results/star")
-rsem_ref      = config["rsem_reference"]      # ex) "data/rsem/GRCh38_gencode_v4X"
-rsem_outdir   = config.get("rsem_outdir", "results/rsem")
-genome_fai    = config["genome_fai"]          # ex) "data/reference/GRCh38.fa.fai"
-threads_star  = int(config.get("threads_star", 8))
-threads_fastp = int(config.get("threads_fastp", 4))
-threads_rsem  = int(config.get("threads_rsem", 8))
-
-# 입력 FASTQ 패턴: {sample}_1.fq.gz / {sample}_2.fq.gz
-SAMPLES, = glob_wildcards(os.path.join(rowdata_dir, "{sample}_1.fq.gz"))
+rowdata_dir = config["rowdata_dir"]
+SAMPLES, = glob_wildcards(os.path.join(rowdata_dir, "{sample}_Trimmed_Paired_R1.fastq"))
 
 rule all:
     input:
-        # fastp 결과
-        expand(f"{trimmed_dir}" + "/{sample}_R1.trimmed.fastq.gz", sample=SAMPLES),
-        expand(f"{trimmed_dir}" + "/{sample}_R2.trimmed.fastq.gz", sample=SAMPLES),
-        expand(f"{trimmed_dir}" + "/{sample}.html", sample=SAMPLES),
-        expand(f"{trimmed_dir}" + "/{sample}.json", sample=SAMPLES),
-        # STAR 결과 (정렬 BAM + Transcriptome BAM)
-        expand(f"{star_outdir}" + "/{sample}.Aligned.sortedByCoord.out.bam", sample=SAMPLES),
-        expand(f"{star_outdir}" + "/{sample}.Aligned.toTranscriptome.out.bam", sample=SAMPLES),
-        # RSEM 결과
-        expand(f"{rsem_outdir}" + "/{sample}.genes.results", sample=SAMPLES),
-        expand(f"{rsem_outdir}" + "/{sample}.isoforms.results", sample=SAMPLES)
-
-# ---------- fastp ----------
-rule fastp:
-    input:
-        r1 = lambda wc: os.path.join(rowdata_dir, f"{wc.sample}_1.fq.gz"),
-        r2 = lambda wc: os.path.join(rowdata_dir, f"{wc.sample}_2.fq.gz")
-    output:
-        r1_trimmed = f"{trimmed_dir}" + "/{sample}_R1.trimmed.fastq.gz",
-        r2_trimmed = f"{trimmed_dir}" + "/{sample}_R2.trimmed.fastq.gz",
-        html       = f"{trimmed_dir}" + "/{sample}.html",
-        json       = f"{trimmed_dir}" + "/{sample}.json"
-    threads: threads_fastp
-    singularity: config["tools"]["fastp"]
-    shell:
-        r"""
-        fastp \
-          -i {input.r1} -I {input.r2} \
-          -o {output.r1_trimmed} -O {output.r2_trimmed} \
-          --thread {threads} \
-          --html {output.html} --json {output.json}
-        """
-
-# ---------- STAR (Genome align + TranscriptomeSAM for RSEM) ----------
+        expand("results/star/{sample}.Aligned.toTranscriptome.out.bam", sample=SAMPLES)
 rule star:
     input:
-        idx = star_index,
-        r1  = f"{trimmed_dir}" + "/{sample}_R1.trimmed.fastq.gz",
-        r2  = f"{trimmed_dir}" + "/{sample}_R2.trimmed.fastq.gz"
+        idx = "data/star_idx/",
+        r1 = lambda wildcard: f"data/fastq/test/{wildcard.sample}_Trimmed_Paired_R1.fastq",
+        r2 = lambda wildcard: f"data/fastq/test/{wildcard.sample}_Trimmed_Paired_R2.fastq"
     output:
-        bam_genome = f"{star_outdir}" + "/{sample}.Aligned.sortedByCoord.out.bam",
-        bam_tx     = f"{star_outdir}" + "/{sample}.Aligned.toTranscriptome.out.bam"
+        tbam = "results/star/{sample}.Aligned.toTranscriptome.out.bam"
     params:
-        prefix = lambda wc: f"{star_outdir}/{wc.sample}."
-    threads: threads_star
-    singularity: config["tools"]["star"]
+        prefix = lambda wc: f"results/star/{wc.sample}."
+    singularity:
+        config["tools"]["star"]
     shell:
-        r"""
-        STAR \
-          --runThreadN {threads} \
-          --genomeDir {input.idx} \
-          --readFilesIn {input.r1} {input.r2} \
-          --readFilesCommand zcat \
-          --outFileNamePrefix {params.prefix} \
-          --outSAMtype BAM SortedByCoordinate \
-          --outSAMunmapped Within \
-          --outSAMattributes Standard \
-          --quantMode TranscriptomeSAM \
-          --twopassMode None
-        """
-
-# ---------- RSEM (from STAR transcriptome BAM) ----------
-# TruSeq Stranded mRNA → reverse-stranded 처리 권장
-rule rsem:
-    input:
-        bam_tx = f"{star_outdir}" + "/{sample}.Aligned.toTranscriptome.out.bam"
-    output:
-        gene = f"{rsem_outdir}" + "/{sample}.genes.results",
-        iso  = f"{rsem_outdir}" + "/{sample}.isoforms.results"
-    params:
-        out_prefix = lambda wc: f"{rsem_outdir}/{wc.sample}"
-    threads: threads_rsem
-    singularity: config["tools"]["rsem"]
-    shell:
-        r"""
-        rsem-calculate-expression \
-          --paired-end \
-          --alignments \
-          --strandedness reverse \
-          --estimate-rspd \
-          --calc-pme \
-          --no-bam-output \
-          --num-threads {threads} \
-          --fai {genome_fai} \
-          {input.bam_tx} {rsem_ref} {params.out_prefix}
-        """
+        "STAR --runThreadN 6 --genomeDir {input.idx} --readFilesIn {input.r1} {input.r2} --outFileNamePrefix {params.prefix} --outSAMtype None --quantMode TranscriptomeSAM --twopassMode None"
