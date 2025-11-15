@@ -140,4 +140,4 @@ rule rsem:
     params:
         output_prefix = lambda wc: f"results/rsem/{wc.sample}"
     shell:
-        "rsem-calculate-expression --paired-end --alignments --fai data/reference/GRCh38.p14.genome.fa.fai --strandedness reverse --estimate-rspd --calc-pme --no-bam-output {input.bam_tx} data/rsem/rsem_genv49_GR38p14 {params.output_prefix}"
+        "rsem-calculate-expression --paired-end --alignments --fai data/reference/GRCh38.p14.genome.fa.fai --strandedness reverse --estimate-rspd --no-bam-output {input.bam_tx} data/rsem/rsem_genv49_GR38p14 {params.output_prefix}"
