@@ -1,1 +1,14 @@
+v1 <- prom1_TdT_TW_vs_prom1_TdT_sig_genes$SYMBOL
+v2 <- prom1_TdT_TW_vs_TdT_sig_genes$SYMBOL
+v3 <- prom1_TdT_TW_vs_TdT_TW_sig_genes$SYMBOL
+
+common_vals <- Reduce(intersect, list(v1, v2, v3))
+
+df1_common <- prom1_TdT_TW_vs_prom1_TdT_sig_genes %>% filter(.data[["SYMBOL"]] %in% common_vals)
+df2_common <- prom1_TdT_TW_vs_TdT_sig_genes %>% filter(.data[["SYMBOL"]] %in% common_vals)
+df3_common <- prom1_TdT_TW_vs_TdT_TW_sig_genes %>% filter(.data[["SYMBOL"]] %in% common_vals)
+
+write_xlsx(df1_common, "common genes S1 vs S3.xlsx")
+write_xlsx(df2_common, "common genes S1 vs S4.xlsx")
+write_xlsx(df3_common, "common genes S1 vs S2.xlsx")
 
