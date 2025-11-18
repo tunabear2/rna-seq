@@ -98,7 +98,95 @@ mat_z <- t(scale(t(expr_mat)))
 
 # NA가 생기면 0으로 바꾸거나 row 제거 (선택)
 mat_z[is.na(mat_z)] <- 0
+---------------------------------------
+common_symbol <- df$SYMBOL
+common_symbol <- common_genes_S2제외$SYMBOL
+rsem_dir <- "/Users/dwyun/rsem/raw_data/"
+files <- list.files(rsem_dir, pattern = "_rsem_genes_results\\.xlsx$", full.names = TRUE)
 
+files
+
+read_rsem_tpm <- function(f){
+  sample_name <- basename(f) %>%
+    tools::file_path_sans_ext() %>%
+    str_remove("_rsem_genes_results")   # TdT_1, prom1_TdT_TW_3 이런 식으로만 남게
+  
+  df <- read_excel(f) %>%
+    rename_with(tolower) %>%           # gene_id, symbol, tpm 소문자로 맞추기
+    select(gene_id, symbol, tpm) %>%
+    mutate(sample = sample_name)
+  
+  df
+}
+
+rsem_long <- purrr::map_dfr(files, read_rsem_tpm)
+head(rsem_long)
+
+rsem_long <- rsem_long %>%
+  mutate(
+    group = case_when(
+      str_detect(sample, "^TdT_TW") ~ "TdT_TW",
+      str_detect(sample, "^TdT_") ~ "TdT",
+      str_detect(sample, "^prom1_TdT_TW") ~ "prom1_TdT_TW",
+      str_detect(sample, "^prom1_TdT_") ~ "prom1_TdT",
+      TRUE ~ "etc"
+    )
+  )
+
+table(rsem_long$group, rsem_long$sample)
+
+group_mean <- rsem_long %>%
+  group_by(gene_id, symbol, group) %>%
+  summarise(tpm_mean = mean(tpm, na.rm = TRUE), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = group, values_from = tpm_mean)
+
+head(group_mean)
+
+# 공통 gene 리스트 (SYMBOL 기준) - 이미 가지고 있는 벡터를 여기 넣으면 돼
+# 예시:
+# common_symbol <- c("MUC16", "MIRLET7IHG", "XYZ1", ...)
+
+mat_df <- group_mean %>%
+  filter(symbol %in% common_symbol) %>%
+  arrange(match(symbol, common_symbol))   # 원래 리스트 순서대로 정렬 (선택)
+
+mat_df %>%
+  count(symbol) %>%
+  filter(n > 1)
+# rownames = symbol, column = 4개 샘플군
+expr_mat <- mat_df %>%
+  select(symbol, TdT, TdT_TW, prom1_TdT, prom1_TdT_TW) %>%
+  column_to_rownames("symbol") %>%
+  as.matrix()
+
+expr_mat[1:5, ]
+
+mat_df %>% 
+  count(symbol) %>% 
+  filter(n > 1)
+
+mat_df <- mat_df[mat_df$gene_id != "ENSG00000274611", ]
+
+# gene(row)별 z-score
+mat_z <- t(scale(t(expr_mat)))
+
+# NA가 생기면 0으로 바꾸거나 row 제거 (선택)
+mat_z[is.na(mat_z)] <- 0
+
+library(ComplexHeatmap)
+
+Heatmap(
+  mat_z,
+  name = "Zscore",
+  cluster_rows = TRUE,
+  cluster_columns = TRUE,
+  column_title = "TNTs group",
+  row_title = "Common genes",
+  column_names_rot = 0,
+  rect_gp = gpar(col = "grey80", lwd = 1.0)
+)
+# heatmap x축 바꾸기.
+colnames(mat_z) <- c(" S4", " S2", " S3", " S1")
 library(ComplexHeatmap)
 
 Heatmap(
