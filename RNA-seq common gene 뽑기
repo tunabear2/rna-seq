@@ -1,8 +1,22 @@
+df1 <- prom1_TdT_TW_vs_prom1_TdT_sig_genes
+df2 <- prom1_TdT_TW_vs_TdT_sig_genes
+df3 <- prom1_TdT_vs_TdT_sig_genes
+df4 <- TdT_TW_vs_TdT_sig_genes
+v1 <- df1[["SYMBOL"]]
+v2 <- df2[["SYMBOL"]]
+v3 <- df3[["SYMBOL"]]
+v4 <- df4[["SYMBOL"]]
+common_genes <- Reduce(intersect, list(v1,v2))
+common_genes2 <- Reduce(intersect, list(common_genes, v3))
+common_genes3 <- Reduce(intersect, list(v3, v4))
+common_genes4 <- Reduce(intersect, list(common_genes, common_genes3))
+
 v1 <- prom1_TdT_TW_vs_prom1_TdT_sig_genes$SYMBOL
 v2 <- prom1_TdT_TW_vs_TdT_sig_genes$SYMBOL
 v3 <- prom1_TdT_TW_vs_TdT_TW_sig_genes$SYMBOL
 
-common_vals <- Reduce(intersect, list(v1, v2, v3))
+common_vals <- Reduce(intersect, list(v1, v2, v3)) # v1, v2, v3 겹치는 리스트만 뽑는 명령어
+common_without <- setdiff(x, y) # 이건 x에서 y와 겹치는 리스트 제거하는 명령어
 
 df1_common <- prom1_TdT_TW_vs_prom1_TdT_sig_genes %>% filter(.data[["SYMBOL"]] %in% common_vals)
 df2_common <- prom1_TdT_TW_vs_TdT_sig_genes %>% filter(.data[["SYMBOL"]] %in% common_vals)
