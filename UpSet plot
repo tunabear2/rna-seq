@@ -1,0 +1,22 @@
+install.packages("UpSetR")   # 한 번만 설치
+library(UpSetR)
+deg_A <- prom1_TdT_TW_vs_prom1_TdT_sig_genes
+deg_B <- prom1_TdT_TW_vs_TdT_TW_sig_genes
+deg_C <- TdT_vs_prom1_TdT_sig_genes
+deg_D <- TdT_vs_TdT_TW_sig_genes
+
+set_list <- list(
+  A = unique(na.omit(deg_A$SYMBOL)),
+  B = unique(na.omit(deg_B$SYMBOL)),
+  C = unique(na.omit(deg_C$SYMBOL)),
+  D = unique(na.omit(deg_D$SYMBOL))
+)
+input_df <- fromList(set_list)
+head(input_df)
+
+upset(
+  input_df,
+  nsets = length(set_list),
+  nintersects = 30, # 조절하기
+  order.by = "freq"
+)
