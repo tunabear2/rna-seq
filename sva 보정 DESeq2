@@ -116,3 +116,35 @@ sig_df <- res_prom1_TdT_TW_vs_TdT_TW %>%
   )
 write_xlsx(sig_df,
            path = "/Users/dwyun/rsem/sva_prom1_TdT_TW vs TdT_TW sig_genes.xlsx")
+
+-------------------------------
+공통 진 밴다이어그램 및 만들기
+nstall.packages("ggvenn")  # 한 번만 설치
+library(ggvenn)
+
+genes_raw <- unique(prom1_TdT_TW_vs_TdT_TW_sig_genes$SYMBOL)     # 또는 gene_id
+genes_sva <- unique(sva_prom1_TdT_TW_vs_TdT_TW_sig_genes$SYMBOL)
+
+venn_list <- list(
+  no_sva = genes_raw,
+  sva    = genes_sva
+)
+
+ggvenn(venn_list,
+       show_percentage = TRUE,
+       show_elements = FALSE)  # TRUE로 하면 겹치는 gene 이름 다 나옴
+
+# 공통 DEG
+common_genes <- intersect(genes_raw, genes_sva)
+
+# sva 안 쓴 분석에서만 DEG인 gene
+only_raw <- setdiff(genes_raw, genes_sva)
+
+# sva 쓴 분석에서만 DEG인 gene
+only_sva <- setdiff(genes_sva, genes_raw)
+
+length(common_genes); length(only_raw); length(only_sva)
+
+common_df <- sva_prom1_TdT_TW_vs_TdT_TW_sig_genes %>% filter(SYMBOL %in% common_genes)  # 예: sva 쪽 정보 기준
+# write.csv(common_df, "common_DEGs_sva_vs_nosva.csv", row.names = FALSE)
+write.csv(common_df, "common_sva vs non_sva S1 vs S2.csv", row.names = FALSE)
