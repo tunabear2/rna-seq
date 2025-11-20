@@ -1,0 +1,106 @@
+library(tximport)
+library(DESeq2)
+library(sva)
+install.packages("sva")
+library(dplyr)
+install.packages("BiocManager")
+BiocManager::install("sva")
+a
+
+rsem_dir <- "/Users/dwyun/rsem/data/"   # 네가 쓰던 폴더로 수정
+files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
+length(files)         # 12개 나오는지 확인
+files
+
+samples <- sub("\\.genes\\.results$", "", basename(files))
+names(files) <- samples
+samples
+
+condition <- case_when(
+  grepl("^TdT_TW", samples) ~ "TdT_TW",
+  grepl("^TdT_", samples) & !grepl("TW", samples) ~ "TdT",
+  grepl("^prom1_TdT_TW", samples) ~ "prom1_TdT_TW",
+  grepl("^prom1_TdT_", samples) & !grepl("TW", samples) ~ "prom1_TdT",
+  TRUE ~ NA_character_
+)
+
+condition <- factor(condition,
+                    levels = c("TdT", "TdT_TW", "prom1_TdT", "prom1_TdT_TW"))
+
+coldata <- data.frame(sample = samples,
+                      condition = condition,
+                      row.names = samples)
+coldata
+
+txi <- tximport(files,
+                type = "rsem",
+                txIn = FALSE,
+                txOut = FALSE,
+                countsFromAbundance = "no")
+
+txi$length[txi$length == 0] <- 1
+counts <- round(txi$counts)  # svaseq는 count 기반이라 반올림해서 사용
+dim(counts)
+
+# 너무 낮은 expression 은 제거 (원하는 기준으로 조절 가능)
+keep <- rowSums(counts) >= 1
+counts <- counts[keep, ]
+dim(counts)
+
+
+# full model : 우리가 관심 있는 조건 포함
+mod  <- model.matrix(~ condition, data = coldata)
+
+# null model : 조건 없이 intercept만
+mod0 <- model.matrix(~ 1, data = coldata)
+
+# svaseq 실행 (gene x sample matrix 필요)
+svobj <- svaseq(as.matrix(counts), mod, mod0)
+
+svobj$n.sv      # 추정된 surrogate variable 개수
+head(svobj$sv)  # (샘플 x SV개수)
+
+for (i in seq_len(svobj$n.sv)) {
+  coldata[[paste0("SV", i)]] <- svobj$sv[, i]
+}
+
+coldata
+
+# 디자인식 만들기: ~ SV1 + SV2 + ... + condition
+sv_terms <- paste0("SV", seq_len(svobj$n.sv), collapse = " + ")
+design_formula <- as.formula(paste("~", sv_terms, "+ condition"))
+design_formula
+
+dds_sva <- DESeqDataSetFromMatrix(countData = counts,
+                                  colData  = coldata,
+                                  design   = design_formula)
+
+dds_sva <- DESeq(dds_sva)
+
+# 예: prom1_TdT_TW vs prom1_TdT 비교
+res_prom1_TW_vs_prom1 <- results(dds_sva,
+                                 contrast = c("condition",
+                                              "prom1_TdT_TW", "prom1_TdT"))
+head(res_prom1_TW_vs_prom1)
+
+이건 pca 그리는법.
+  
+vsd <- vst(dds_sva, blind = FALSE)
+
+# (1) 그냥 PCA – 이미 SV가 들어간 모델이라 이것만으로도 batch가 많이 줄어든 상태일 거야
+plotPCA(vsd, intgroup = "condition")
+
+# (2) 더 깔끔하게 하고 싶으면 limma::removeBatchEffect + SV 사용
+library(limma)
+
+mat_vst <- assay(vsd)  # gene x sample
+
+mat_vst_nobatch <- removeBatchEffect(mat_vst,
+                                     covariates = svobj$sv,
+                                     design = mod)
+
+# 이 mat_vst_nobatch를 Heatmap이나 추가 PCA에 사용
+# 예: 다시 PCA
+pca <- prcomp(t(mat_vst_nobatch))
+plot(pca$x[,1], pca$x[,2], pch = 19, col = coldata$condition)
+text
