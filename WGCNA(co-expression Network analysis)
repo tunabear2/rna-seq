@@ -1,0 +1,102 @@
+BiocManager::install("tximportData")
+install.packages("WGCNA")
+
+library(DESeq2)
+library(tximport)
+library(WGCNA)
+options(stringsAsFactors = FALSE)
+allowWGCNAThreads()
+
+rsem_dir <- "C:/Users/너아이디/rsem"   # ← rsem .genes.results 파일들이 있는 폴더
+
+setwd(rsem_dir)
+
+# .genes.results 파일 목록
+files <- list.files(rsem_dir,
+                    pattern = "\\.genes\\.results$",
+                    full.names = TRUE)
+stopifnot(length(files) > 1)
+
+# sample 이름 = 파일명에서 .genes.results 제거한 것
+samples <- sub("\\.genes\\.results$", "", basename(files))
+names(files) <- samples
+
+samples
+
+condition <- dplyr::case_when(
+  grepl("prom1_TdT_TW", samples) ~ "prom1_TdT_TW",
+  grepl("prom1_TdT",     samples) ~ "prom1_TdT",
+  grepl("TdT_TW",        samples) ~ "TdT_TW",
+  grepl("TdT",           samples) ~ "TdT",
+  TRUE ~ "unknown"
+)
+
+condition <- factor(
+  condition,
+  levels = c("prom1_TdT", "prom1_TdT_TW", "TdT", "TdT_TW")  # 순서는 원하는대로 조정
+)
+
+coldata <- data.frame(
+  sample    = samples,
+  condition = condition,
+  row.names = samples
+)
+
+coldata
+
+txi <- tximport(
+  files,
+  type = "rsem",
+  txIn = FALSE,
+  txOut = FALSE,
+  countsFromAbundance = "no"
+)
+
+# 길이가 0인 유전자는 에러 방지용으로 1로 교체
+txi$length[txi$length == 0] <- 1
+
+dds <- DESeqDataSetFromTximport(
+  txi     = txi,
+  colData = coldata,
+  design  = ~ condition
+)
+
+dds <- DESeq(dds)
+
+# vst 변환 (WGCNA용 expression 값)
+vsd <- vst(dds, blind = FALSE)
+expr_mat <- assay(vsd)   # genes x samples
+
+dim(expr_mat)
+
+library(matrixStats)
+
+# 분산 계산
+gene_var <- rowVars(expr_mat)
+
+# 분산 top 5000 유전자 선택 (유전자 수가 5000 미만이면 전부 사용)
+n_keep <- min(5000, nrow(expr_mat))
+keep_genes_idx <- order(gene_var, decreasing = TRUE)[1:n_keep]
+
+expr_filt <- expr_mat[keep_genes_idx, ]
+
+# WGCNA는 samples x genes 형식을 선호
+datExpr0 <- t(expr_filt)   # (samples x genes)
+dim(datExpr0)
+
+gsg <- goodSamplesGenes(datExpr0, verbose = 3)
+gsg$allOK   # TRUE면 그대로 진행
+
+if (!gsg$allOK) {
+  if (sum(!gsg$goodGenes) > 0)
+    datExpr0 <- datExpr0[, gsg$goodGenes]
+
+  if (sum(!gsg$goodSamples) > 0)
+    datExpr0 <- datExpr0[gsg$goodSamples, ]
+}
+
+# 샘플 클러스터링 (아웃라이어가 있는지 대충 확인)
+sampleTree <- hclust(dist(datExpr0), method = "average")
+plot(sampleTree,
+     main = "Sample clustering to detect outliers",
+     xlab = "", sub = "")
