@@ -9,3 +9,116 @@ sig_df <- res_df %>%
   )
 write_xlsx(sig_df,
            path = "C:/Users/rkawk/rsem/prom1_TdT_TW_vs_prom1_TdT_sig_genes.xlsx")
+
+setwd("/Users/dwyun/rsem/data")  # 예: setwd("/Users/tuna/rsem")
+
+# 2) 패키지 로드
+library(tximport)
+library(DESeq2)
+library(readr)
+# 3) genes.results 파일 목록 가져오기
+files <- list.files(pattern = "\\.genes\\.results$", full.names = TRUE)
+files
+length(files)   # 12개 나오는지 확인
+# 4) 샘플 이름 만들기 (확장자만 제거)
+samples <- sub("\\.genes\\.results$", "", basename(files))
+samples
+names(files) <- samples
+# 5) condition 벡터 생성
+condition <- dplyr::case_when(
+  grepl("prom1_TdT_TW", samples) ~ "prom1_TdT_TW",
+  grepl("prom1_TdT",    samples) ~ "prom1_TdT",
+  grepl("TdT_TW",       samples) ~ "TdT_TW",
+  grepl("TdT_",         samples) ~ "TdT",
+  TRUE ~ NA_character_
+)
+
+condition
+
+# 6) factor로 정리 (원하는 순서대로 level 지정)
+condition <- factor(condition,
+                    levels = c("prom1_TdT_TW", "TdT_TW", "prom1_TdT", "TdT"))
+
+# 7) coldata 만들기
+coldata <- data.frame(
+  sample = samples,
+  condition = condition,
+  row.names = samples
+)
+coldata
+
+# 8) tximport로 RSEM 결과 불러오기
+txi <- tximport(files,
+                type = "rsem",
+                txIn  = FALSE,
+                txOut = FALSE,
+                countsFromAbundance = "no")
+
+# length에 0이 있으면 DESeq2가 에러 내니까 1로 바꿔주기
+txi$length[txi$length == 0] <- 1
+
+# 9) DESeqDataSet 생성
+dds_all <- DESeqDataSetFromTximport(txi = txi,
+                                    colData = coldata,
+                                    design  = ~ condition)
+
+dds_all
+
+# 10) DESeq 실행
+dds_all <- DESeq(dds_all)
+
+# TdT_TW vs TdT
+res_TdT_TW_vs_TdT <- results(dds_all,
+                             contrast = c("condition", "TdT_TW", "TdT"))
+res_TdT_TW_vs_TdT <- lfcShrink(dds_all,
+                               contrast = c("condition", "TdT_TW", "TdT"),
+                               res = res_TdT_TW_vs_TdT,
+                               type = "ashr")  # ashr 쓰기 전 ashr 패키지 설치 필요할 수 있음
+
+# prom1_TdT vs TdT
+res_prom1_TdT_vs_TdT <- results(dds_all,
+                                contrast = c("condition", "prom1_TdT", "TdT"))
+
+# prom1_TdT_TW vs prom1_TdT
+res_prom1_TdT_TW_vs_prom1_TdT <- results(dds_all,
+                                         contrast = c("condition", "prom1_TdT_TW", "prom1_TdT"))
+
+# prom1_TdT_TW vs TdT_TW
+res_prom1_TdT_TW_vs_TdT_TW <- results(dds_all,
+                                      contrast = c("condition", "prom1_TdT_TW", "TdT_TW"))
+res_df <- as.data.frame(res_prom1_TdT_TW_vs_TdT_TW)
+res_df$gene_id <- rownames(res_df)
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(res_df$gene_id),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+res_df <- res_df %>%
+  dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
+
+res_df <- res_df %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
+  )
+
+res_df <- res_df %>%
+  dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
+
+write_xlsx(as.data.frame(res_df), path = "/Users/dwyun/rsem/prom1_TdT_TW vs TdT_TW.xlsx")
+
+lfc_cut <- 1
+fdr_cut <- 0.05
+
+sig_df <- res_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    abs(log2FoldChange) >= lfc_cut
+  )
+write_xlsx(sig_df,
+           path = "/Users/dwyun/rsem/prom1_TdT_TW_vs_prom1_TdT_sig_genes.xlsx")
