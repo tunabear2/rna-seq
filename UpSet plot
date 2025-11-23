@@ -53,3 +53,62 @@ inter_exact_genes <- inter_exact$gene
 write.csv(inter_exact["gene"],
           file = "DEG_S1S2_S1S3_S1S4_only.csv",
           row.names = FALSE)
+---------------------------------------------------------
+install.packages("UpSetR")   # 한 번만 설치
+library(UpSetR)
+deg_A <- prom1_TdT_TW_vs_prom1_TdT_sig_genes
+deg_B <- prom1_TdT_TW_vs_TdT_sig_genes
+deg_C <- prom1_TdT_TW_vs_TdT_TW_sig_genes
+deg_D <- prom1_TdT_vs_TdT_sig_genes
+deg_E <- TdT_TW_vs_prom1_TdT_sig_genes
+deg_F <- TdT_TW_vs_TdT_sig_genes
+set_list <- list(
+  A = unique(na.omit(deg_A$SYMBOL)),
+  B = unique(na.omit(deg_B$SYMBOL)),
+  C = unique(na.omit(deg_C$SYMBOL)),
+  D = unique(na.omit(deg_D$SYMBOL)),
+  E = unique(na.omit(deg_E$SYMBOL)),
+  F = unique(na.omit(deg_F$SYMBOL))
+)
+input_df <- fromList(set_list)
+head(input_df)
+
+upset(
+  input_df,
+  nsets = length(set_list),
+  nintersects = 30, # 조절하기
+  order.by = "freq"
+)
+# 전체 gene 세트 만들기
+all_genes <- sort(unique(unlist(set_list)))
+
+mat <- sapply(set_list, function(x) all_genes %in% x)
+
+df_membership <- data.frame(
+  gene = all_genes,
+  mat,
+  check.names = FALSE
+)
+head(df_membership)
+
+# 모든 리스트에 공통인 gene
+common_all <- df_membership %>%
+  filter(S1_S2 & S2_S3 & S1_S3 & S1_S4 & S2_S4 & S3_S4)
+
+common_all_genes <- common_all$gene
+
+# 특정 조합의 교집합 gene 뽑기
+target_include <- c("S1_S2", "S1_S3", "S1_S4")
+target_exclude <- setdiff(names(set_list), target_include)
+
+inter_exact <- df_membership %>%
+  filter(
+    if_all(all_of(target_include), ~ .x),
+    if_all(all_of(target_exclude), ~ !.x)
+  )
+
+inter_exact_genes <- inter_exact$gene
+
+write.csv(inter_exact["gene"],
+          file = "DEG_S1S2_S1S3_S1S4_only.csv",
+          row.names = FALSE)
