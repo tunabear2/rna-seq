@@ -178,7 +178,6 @@ gene_modules <- data.frame(
   module = moduleColors,
   stringsAsFactors = FALSE
 )
-gene_modules$gene <- rownames(gene_modules)
 
 map_orgdb <- AnnotationDbi::select(
   org.Hs.eg.db,
