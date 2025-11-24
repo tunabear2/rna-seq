@@ -6,6 +6,7 @@ library(WGCNA)
 options(stringsAsFactors = FALSE)
 allowWGCNAThreads()
 
+
 rsem_dir <- "/Users/dwyun/rsem/data"   # ← rsem .genes.results 파일들이 있는 폴더
 
 # .genes.results 파일 목록
@@ -169,3 +170,46 @@ labeledHeatmap(
   main = "module-condition relationships\ncor (p-value)"
 )
 dev.off()
+
+table(moduleColors)
+gene_names <- colnames(datExpr)
+gene_modules <- data.frame(
+  gene = gene_names,
+  module = moduleColors,
+  stringsAsFactors = FALSE
+)
+gene_modules$gene <- rownames(gene_modules)
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(gene_modules$gene),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+gene_modules <- gene_modules %>%
+  dplyr::left_join(map_orgdb, by = c("gene" = "ENSEMBL"))
+
+gene_modules <- gene_modules %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene)
+  )
+
+gene_modules <- gene_modules %>%
+  dplyr::select(gene, SYMBOL, ENTREZID, everything())
+
+write.csv(gene_modules,
+          file = "WGCNA_gene_modules.csv",
+          row.names = FALSE)
+brown_genens <- subset(gene_modules, module == "brown")$SYMBOL
+brown_genens_df <- data.frame(
+  gene = brown_genens,
+  stringsAsFactors = FALSE
+)
+write.csv(
+  brown_genens_df,
+  file = "brown_genes.csv",
+  row.names = FALSE
+)
