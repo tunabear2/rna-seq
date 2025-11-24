@@ -86,7 +86,7 @@ datExpr <- t(expr_filt)
 gsg <- goodSamplesGenes(datExpr, verbose = 3)
 gsg$allOK
 
-powers <- c(1:30)
+powers <- c(1:20)
 
 sft <- pickSoftThreshold(
   datExpr,
