@@ -1,4 +1,3 @@
-BiocManager::install("tximportData")
 install.packages("WGCNA")
 
 library(DESeq2)
@@ -86,7 +85,7 @@ datExpr <- t(expr_filt)
 gsg <- goodSamplesGenes(datExpr, verbose = 3)
 gsg$allOK
 
-powers <- c(1:20)
+powers <- c(1:30)
 
 sft <- pickSoftThreshold(
   datExpr,
@@ -139,8 +138,9 @@ datTraits <- datTraits[rownames(datExpr), , drop = FALSE]
 MEs0 <- moduleEigengenes(datExpr, moduleColors)$eigengenes
 MEs <- orderMEs(MEs0)
 
-traitDesign <- model.matrix(~ condition, data = datTraits)
-traitDesign <- traitDesign[, -1, drop = FALSE]
+traitDesign <- model.matrix(~ 0 + condition, data = datTraits)
+colnames(traitDesign) <- gsub("condition", "", colnames(traitDesign))
+traitDesign
 
 moduleTraitCor <- cor(MEs, traitDesign, use = "p")
 moduleTraitPvalue <- corPvalueStudent(moduleTraitCor, nrow(datExpr))
@@ -151,6 +151,9 @@ textMatrix <- paste0(
 )
 dim(textMatrix) <- dim(moduleTraitCor)
 
+png("module_trait_heatmap.png",
+    width = 1600, height = 1000,
+    res = 150)
 par(mar = c(6, 8.5, 3, 3))
 labeledHeatmap(
   Matrix = moduleTraitCor,
@@ -165,3 +168,4 @@ labeledHeatmap(
   zlim = c(-1, 1),
   main = "module-condition relationships\ncor (p-value)"
 )
+dev.off()
