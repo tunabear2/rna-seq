@@ -7,9 +7,7 @@ library(WGCNA)
 options(stringsAsFactors = FALSE)
 allowWGCNAThreads()
 
-rsem_dir <- "C:/Users/너아이디/rsem"   # ← rsem .genes.results 파일들이 있는 폴더
-
-setwd(rsem_dir)
+rsem_dir <- "/Users/dwyun/rsem/data"   # ← rsem .genes.results 파일들이 있는 폴더
 
 # .genes.results 파일 목록
 files <- list.files(rsem_dir,
@@ -33,7 +31,7 @@ condition <- dplyr::case_when(
 
 condition <- factor(
   condition,
-  levels = c("prom1_TdT", "prom1_TdT_TW", "TdT", "TdT_TW")  # 순서는 원하는대로 조정
+  levels = c("prom1_TdT_TW", "TdT_TW", "prom1_TdT", "TdT")  # 순서는 원하는대로 조정
 )
 
 coldata <- data.frame(
@@ -71,32 +69,99 @@ dim(expr_mat)
 
 library(matrixStats)
 
-# 분산 계산
 gene_var <- rowVars(expr_mat)
 
-# 분산 top 5000 유전자 선택 (유전자 수가 5000 미만이면 전부 사용)
+gene_var
+
 n_keep <- min(5000, nrow(expr_mat))
+
 keep_genes_idx <- order(gene_var, decreasing = TRUE)[1:n_keep]
+keep_genes_idx
 
 expr_filt <- expr_mat[keep_genes_idx, ]
+expr_filt
 
-# WGCNA는 samples x genes 형식을 선호
-datExpr0 <- t(expr_filt)   # (samples x genes)
-dim(datExpr0)
+datExpr <- t(expr_filt)
 
-gsg <- goodSamplesGenes(datExpr0, verbose = 3)
-gsg$allOK   # TRUE면 그대로 진행
+gsg <- goodSamplesGenes(datExpr, verbose = 3)
+gsg$allOK
 
-if (!gsg$allOK) {
-  if (sum(!gsg$goodGenes) > 0)
-    datExpr0 <- datExpr0[, gsg$goodGenes]
+powers <- c(1:30)
 
-  if (sum(!gsg$goodSamples) > 0)
-    datExpr0 <- datExpr0[gsg$goodSamples, ]
+sft <- pickSoftThreshold(
+  datExpr,
+  powerVector = powers,
+  verbose = 5
+)
+
+softPower <- sft$powerEstimate
+if (is.na(softPower)) {
+  softPower <- 6
 }
+softPower
 
-# 샘플 클러스터링 (아웃라이어가 있는지 대충 확인)
-sampleTree <- hclust(dist(datExpr0), method = "average")
-plot(sampleTree,
-     main = "Sample clustering to detect outliers",
-     xlab = "", sub = "")
+cor <- WGCNA::cor
+net <- blockwiseModules(
+  datExpr,
+  power = softPower,
+  TOMType = "signed",
+  minModuleSize = 30,
+  reassignThreshold = 0,
+  mergeCutHeight = 0.25,
+  numericLabels = TRUE,
+  pamRespectsDendro = FALSE,
+  saveTOMs = FALSE,
+  verbose = 3
+)
+
+moduleLabels <- net$colors
+moduleColors <- labels2colors(moduleLabels)
+MEs <- net$MEs
+geneTree <- net$dendrograms[[1]]
+
+plotDendroAndColors(
+  geneTree,
+  moduleColors,
+  "module colors",
+  dendroLabels = FALSE,
+  hang = 0.03,
+  addGuide = TRUE,
+  guideHang = 0.05
+)
+
+datTraits <- data.frame(
+  condition = coldata$condition
+)
+rownames(datTraits) <- rownames(coldata)
+
+datTraits <- datTraits[rownames(datExpr), , drop = FALSE]
+
+MEs0 <- moduleEigengenes(datExpr, moduleColors)$eigengenes
+MEs <- orderMEs(MEs0)
+
+traitDesign <- model.matrix(~ condition, data = datTraits)
+traitDesign <- traitDesign[, -1, drop = FALSE]
+
+moduleTraitCor <- cor(MEs, traitDesign, use = "p")
+moduleTraitPvalue <- corPvalueStudent(moduleTraitCor, nrow(datExpr))
+
+textMatrix <- paste0(
+  signif(moduleTraitCor, 2), "\n(",
+  signif(moduleTraitPvalue, 1), ")"
+)
+dim(textMatrix) <- dim(moduleTraitCor)
+
+par(mar = c(6, 8.5, 3, 3))
+labeledHeatmap(
+  Matrix = moduleTraitCor,
+  xLabels = colnames(traitDesign),
+  yLabels = names(MEs),
+  ySymbols = names(MEs),
+  colorLabels = FALSE,
+  colors = blueWhiteRed(50),
+  textMatrix = textMatrix,
+  setStdMargins = FALSE,
+  cex.text = 0.7,
+  zlim = c(-1, 1),
+  main = "module-condition relationships\ncor (p-value)"
+)
