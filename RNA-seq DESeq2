@@ -96,6 +96,7 @@ dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ conditi
 dds <- DESeq(dds)
 
 res <- results(dds,contrast = c("condition", "prom1_TdT_TW", "prom1_TdT"))
+rownames(res) <- sub("\\.\\d+$", "", rownames(res))
 
 res_df <- as.data.frame(res)
 res_df$gene_id <- rownames(res_df)
@@ -178,6 +179,7 @@ dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ conditi
 dds <- DESeq(dds)
 
 res <- results(dds,contrast = c("condition", "prom1_TdT_TW", "TdT_TW"))
+rownames(res) <- sub("\\.\\d+$", "", rownames(res))
 
 res_df <- as.data.frame(res)
 res_df$gene_id <- rownames(res_df)
@@ -259,6 +261,7 @@ dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ conditi
 dds <- DESeq(dds)
 
 res <- results(dds,contrast = c("condition", "TdT", "TdT_TW"))
+rownames(res) <- sub("\\.\\d+$", "", rownames(res))
 
 res_df <- as.data.frame(res)
 res_df$gene_id <- rownames(res_df)
@@ -340,6 +343,7 @@ dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ conditi
 dds <- DESeq(dds)
 
 res <- results(dds,contrast = c("condition", "TdT", "prom1_TdT"))
+rownames(res) <- sub("\\.\\d+$", "", rownames(res))
 
 res_df <- as.data.frame(res)
 res_df$gene_id <- rownames(res_df)
@@ -421,6 +425,7 @@ dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ conditi
 dds <- DESeq(dds)
 
 res <- results(dds,contrast = c("condition", "prom1_TdT_TW", "TdT"))
+rownames(res) <- sub("\\.\\d+$", "", rownames(res))
 
 res_df <- as.data.frame(res)
 res_df$gene_id <- rownames(res_df)
@@ -502,6 +507,7 @@ dds <- DESeqDataSetFromTximport(txi = txi, colData = coldata, design = ~ conditi
 dds <- DESeq(dds)
 
 res <- results(dds,contrast = c("condition", "prom1_TdT", "TdT_TW"))
+rownames(res) <- sub("\\.\\d+$", "", rownames(res))
 
 res_df <- as.data.frame(res)
 res_df$gene_id <- rownames(res_df)
