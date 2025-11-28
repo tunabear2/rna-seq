@@ -1,15 +1,3 @@
-lfc_cut <- 0.585
-fdr_cut <- 0.05
-
-sig_df <- res_df %>%
-  filter(
-    !is.na(padj),
-    padj < fdr_cut,
-    abs(log2FoldChange) >= lfc_cut
-  )
-write_xlsx(sig_df,
-           path = "C:/Users/rkawk/rsem/prom1_TdT_TW_vs_prom1_TdT_sig_genes.xlsx")
-
 setwd("/Users/dwyun/rsem/data")  # 예: setwd("/Users/tuna/rsem")
 
 # 2) 패키지 로드
