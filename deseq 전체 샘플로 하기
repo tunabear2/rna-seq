@@ -55,26 +55,28 @@ dds_all
 # 10) DESeq 실행
 dds_all <- DESeq(dds_all)
 
+# TdT_TW vs prom1_TdT
+res_TdT_TW_vs_prom1_TdT <- results(dds_all,
+                                   contrast = c("condition", "TdT_TW", "prom1_TdT"))
 # TdT_TW vs TdT
 res_TdT_TW_vs_TdT <- results(dds_all,
                              contrast = c("condition", "TdT_TW", "TdT"))
-res_TdT_TW_vs_TdT <- lfcShrink(dds_all,
-                               contrast = c("condition", "TdT_TW", "TdT"),
-                               res = res_TdT_TW_vs_TdT,
-                               type = "ashr")  # ashr 쓰기 전 ashr 패키지 설치 필요할 수 있음
 
 # prom1_TdT vs TdT
 res_prom1_TdT_vs_TdT <- results(dds_all,
                                 contrast = c("condition", "prom1_TdT", "TdT"))
-
+# prom1_TdT_TW vs TdT 
+res_prom1_TdT_TW_vs_TdT <- results(dds_all,
+                                   contrast = c("condition", "prom1_TdT_TW", "TdT"))
 # prom1_TdT_TW vs prom1_TdT
 res_prom1_TdT_TW_vs_prom1_TdT <- results(dds_all,
                                          contrast = c("condition", "prom1_TdT_TW", "prom1_TdT"))
-
 # prom1_TdT_TW vs TdT_TW
 res_prom1_TdT_TW_vs_TdT_TW <- results(dds_all,
                                       contrast = c("condition", "prom1_TdT_TW", "TdT_TW"))
-res_df <- as.data.frame(res_prom1_TdT_TW_vs_TdT_TW)
+res_df <- as.data.frame(res_TdT_TW_vs_prom1_TdT)
+rownames(res_df) <- sub("\\.\\d+$", "", rownames(res_df))
+
 res_df$gene_id <- rownames(res_df)
 
 map_orgdb <- AnnotationDbi::select(
