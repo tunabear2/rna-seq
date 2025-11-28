@@ -1,0 +1,123 @@
+setwd("/Users/dwyun/rsem/data")  # 예: setwd("/Users/tuna/rsem")
+
+# 2) 패키지 로드
+library(tximport)
+library(DESeq2)
+library(readr)
+# 3) genes.results 파일 목록 가져오기
+files <- list.files(pattern = "\\.genes\\.results$", full.names = TRUE)
+files
+length(files)   # 12개 나오는지 확인
+# 4) 샘플 이름 만들기 (확장자만 제거)
+samples <- sub("\\.genes\\.results$", "", basename(files))
+samples
+names(files) <- samples
+# 5) condition 벡터 생성
+condition <- dplyr::case_when(
+  grepl("prom1_TdT_TW", samples) ~ "prom1_TdT_TW",
+  grepl("prom1_TdT",    samples) ~ "prom1_TdT",
+  grepl("TdT_TW",       samples) ~ "TdT_TW",
+  grepl("TdT_",         samples) ~ "TdT",
+  TRUE ~ NA_character_
+)
+
+condition
+
+# 6) factor로 정리 (원하는 순서대로 level 지정)
+condition <- factor(condition,
+                    levels = c("prom1_TdT_TW", "TdT_TW", "prom1_TdT", "TdT"))
+
+# 7) coldata 만들기
+coldata <- data.frame(
+  sample = samples,
+  condition = condition,
+  row.names = samples
+)
+coldata
+
+# 8) tximport로 RSEM 결과 불러오기
+txi <- tximport(files,
+                type = "rsem",
+                txIn  = FALSE,
+                txOut = FALSE,
+                countsFromAbundance = "no")
+
+# length에 0이 있으면 DESeq2가 에러 내니까 1로 바꿔주기
+txi$length[txi$length == 0] <- 1
+
+# 9) DESeqDataSet 생성
+dds_all <- DESeqDataSetFromTximport(txi = txi,
+                                    colData = coldata,
+                                    design  = ~ condition)
+
+dds_all
+
+vsd <- vst(dds_all, blind = FALSE)
+expr_mat <- assay(vsd)   # genes x samples
+# 10) DESeq 실행
+dds_all <- DESeq(dds_all)
+
+sum(round(df_vals$vst_expr, 2) == 5.34)
+
+df_vals_no534 <- subset(df_vals, round(vst_expr, 2) != 5.34)
+
+library(ggplot2)
+min(df_vals_no534)
+max(df_vals_no534)
+ggplot(df_vals_no534, aes(x = vst_expr)) +
+  geom_histogram(bins = 300) +
+  labs(
+    x = "VST expression (one sample, remove 5.34, min 5.4296 max 19.25688)",
+    y = "Gene count",
+    title = paste("Histogram of VST values (", sample_of_interest, ")", sep = "")
+  )
+ggplot(df_vals_no534, aes(x = vst_expr)) +
+  geom_histogram(bins = 300) +
+  scale_y_log10() +
+  labs(
+    x = "VST expression (one sample, remove 5.34, min 5.4296 max 19.25688)",
+    y = "Gene count (log10 scale)",
+    title = paste("Histogram of VST values (", sample_of_interest, ")", sep = "")
+  )
+
+ggplot(df_vals_no534, aes(x = vst_expr)) +
+  geom_histogram(bins = 300) +
+  scale_y_log10()
+  scale_x_continuous(
+    breaks = seq(5, 20, by = 1),       # 큰 눈금 (라벨 보이는 곳)
+    minor_breaks = seq(5, 20, by = 0.5) # 작은 눈금
+  ) +
+  labs(
+    x = "VST expression (one sample, remove 5.34)",
+    y = "Gene count",
+    title = paste("Histogram of VST values (", sample_of_interest, ")", sep = "")
+  )
+
+  ggplot(df_vals_no534, aes(x = vst_expr)) +
+    stat_bin(
+      bins = 300,
+      geom = "step",   # 계단형 선 그래프
+      aes(y = after_stat(cumsum(count)))
+    ) +
+    scale_x_continuous(
+      breaks = seq(5, 20, by = 1),
+      minor_breaks = seq(5, 20, by = 0.5)
+    ) +
+    labs(
+      x = "VST expression (one sample, remove 5.34)",
+      y = "Cumulative gene count(total 23479)",
+      title = paste("Cumulative histogram of VST values (", sample_of_interest, ")", sep = "")
+    )
+  
+
+  # 1) 원래 총 gene 수
+nrow(df_vals)
+  
+  # 2) 5.34(또는 5.343094...) 값인 gene 수
+  sum(round(df_vals$vst_expr, 2) == 5.34)
+  # 또는
+  target <- 5.34309407407089
+  sum(df_vals$vst_expr == target)
+  
+  # 3) 5.34 제거 후 남은 gene 수
+nrow(df_vals_no534)
