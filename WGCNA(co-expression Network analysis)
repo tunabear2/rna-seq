@@ -91,6 +91,7 @@ powers <- c(1:30)
 sft <- pickSoftThreshold(
   datExpr,
   powerVector = powers,
+  networkType = "signed",
   verbose = 5
 )
 
@@ -104,6 +105,7 @@ cor <- WGCNA::cor
 net <- blockwiseModules(
   datExpr,
   power = softPower,
+  networkType = "signed",
   TOMType = "signed",
   minModuleSize = 30,
   reassignThreshold = 0,
