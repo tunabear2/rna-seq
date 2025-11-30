@@ -60,3 +60,6 @@ datExpr_deg <- t(expr_deg)   # samples × genes
 # 이후 과정은 전에 했던 WGCNA 코드에서 datExpr만 바꿔 끼우면 됨
 gsg <- goodSamplesGenes(datExpr_deg, verbose = 3)
 gsg$allOK
+
+"variance > 0.1 인 gene 개수"
+sum(deg_gene_var > 0.15, na.rm = TRUE)
