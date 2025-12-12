@@ -104,3 +104,22 @@ mat_vst_nobatch <- removeBatchEffect(mat_vst,
 pca <- prcomp(t(mat_vst_nobatch))
 plot(pca$x[,1], pca$x[,2], pch = 19, col = coldata$condition)
 text
+
+-----------------------------------------------
+library(limma)
+
+vsd <- vst(dds_sva, blind = TRUE)  # PCA 시각화 목적이면 보통 TRUE 권장(디자인 무시한 변환)
+
+mat <- assay(vsd)
+
+sv_cols <- paste0("SV", seq_len(svobj$n.sv))
+sv_mat <- as.matrix(coldata[, sv_cols, drop = FALSE])
+
+design_cond <- model.matrix(~ condition, data = coldata)
+
+mat_corr <- removeBatchEffect(mat, covariates = sv_mat, design = design_cond)
+
+vsd_corr <- vsd
+assay(vsd_corr) <- mat_corr
+
+plotPCA(vsd_corr, intgroup = "condition")
