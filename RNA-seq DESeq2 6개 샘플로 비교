@@ -570,8 +570,5 @@ sig_down <- res_df %>%
     log2FoldChange <= -lfc_cut
   )
 
-# 저장 + MA Plot
-readr::write_csv(res_df, "results/tables/deseq2_results.csv")
-png("results/figs/MAplot.png", width=1200, height=900, res=160)
-plotMA(res, ylim=c(-6,6))
-dev.off()
+# MA Plot
+plotMA(res, alpha = 0.01, ylim=c(-6,6))
