@@ -1,4 +1,4 @@
-rsem_dir <- "/Users/dwyun/rsem/data/"   # 네 경로로
+rsem_dir <- "/Users/dwyun/rsem/my_data/"   # 네 경로로
 files <- list.files(rsem_dir, pattern = "\\.genes\\.results$", full.names = TRUE)
 
 samples <- sub("\\.genes\\.results$", "", basename(files))
@@ -63,62 +63,269 @@ dds_sva <- DESeqDataSetFromMatrix(countData = counts,
 
 dds_sva <- DESeq(dds_sva)
 
-# 1) prom1_TdT_TW vs prom1_TdT
-deg_prom1_TdT_TW_vs_TdT_TW <- results(dds_sva,
-                                 contrast = c("condition",
-                                              "prom1_TdT_TW", "TdT_TW"))
+S2_vs_S3 <- results(dds_sva,
+                    contrast = c("condition", "TdT_TW", "prom1_TdT"))
+# TdT_TW vs TdT
+S2_vs_S4 <- results(dds_sva,
+                    contrast = c("condition", "TdT_TW", "TdT"))
 
-# 2) TdT_TW vs TdT
-res_TW_vs_TdT <- results(dds_sva,
-                         contrast = c("condition",
-                                      "TdT_TW", "TdT"))
+# prom1_TdT vs TdT
+S3_vs_S4 <- results(dds_sva,
+                    contrast = c("condition", "prom1_TdT", "TdT"))
+# prom1_TdT_TW vs TdT 
+S1_vs_S4 <- results(dds_sva,
+                    contrast = c("condition", "prom1_TdT_TW", "TdT"))
+# prom1_TdT_TW vs prom1_TdT
+S1_vs_S3 <- results(dds_sva,
+                    contrast = c("condition", "prom1_TdT_TW", "prom1_TdT"))
+# prom1_TdT_TW vs TdT_TW
+S1_vs_S2 <- results(dds_sva,
+                    contrast = c("condition", "prom1_TdT_TW", "TdT_TW"))
 
-# 3) prom1_TdT vs TdT (필요하면)
-res_prom1_vs_TdT <- results(dds_sva,
-                            contrast = c("condition",
-                                         "prom1_TdT", "TdT"))
+# S1 vs S2
+S1_vs_S2_df <- as.data.frame(S1_vs_S2)
+rownames(S1_vs_S2_df) <- sub("\\.\\d+$", "", rownames(S1_vs_S2_df))
 
-res_prom1_TdT_TW_vs_TdT_TW <- as.data.frame(deg_prom1_TdT_TW_vs_TdT_TW)
-
-res_prom1_TdT_TW_vs_TdT_TW$gene_id <- rownames(res_prom1_TdT_TW_vs_TdT_TW)
+S1_vs_S2_df$gene_id <- rownames(S1_vs_S2_df)
 
 map_orgdb <- AnnotationDbi::select(
   org.Hs.eg.db,
-  keys    = unique(res_prom1_TdT_TW_vs_TdT_TW$gene_id),
+  keys    = unique(S1_vs_S2_df$gene_id),
   keytype = "ENSEMBL",
   columns = c("SYMBOL", "ENTREZID")
 ) %>% 
   dplyr::distinct(ENSEMBL, .keep_all = TRUE)
 
-res_prom1_TdT_TW_vs_TdT_TW <- res_prom1_TdT_TW_vs_TdT_TW %>%
+S1_vs_S2_df <- S1_vs_S2_df %>%
   dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
 
-res_prom1_TdT_TW_vs_TdT_TW <- res_prom1_TdT_TW_vs_TdT_TW %>%
+S1_vs_S2_df <- S1_vs_S2_df %>%
   mutate(
     SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
     ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
   )
-res_prom1_TdT_TW_vs_TdT_TW <- res_prom1_TdT_TW_vs_TdT_TW %>%
+
+S1_vs_S2_df <- S1_vs_S2_df %>%
   dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
 
-write_xlsx(as.data.frame(res_prom1_TdT_TW_vs_TdT_TW), path = "/Users/dwyun/rsem/sva_prom1_TdT_TW vs TdT_TW.xlsx")
+write_xlsx(as.data.frame(S1_vs_S2_df), path = "/Users/dwyun/rsem/my_data/DESeq2 sva/S1 vs S2.xlsx")
 
-# 필터링 값에 따라 필터링 된 gene list 뽑을거면.
-
-lfc_cut <- 0.585
+lfc_cut <- 1
 fdr_cut <- 0.05
 
-sig_df <- res_prom1_TdT_TW_vs_TdT_TW %>%
+S1_vs_S2_sig_df <- S1_vs_S2_df %>%
   filter(
     !is.na(padj),
     padj < fdr_cut,
     abs(log2FoldChange) >= lfc_cut
   )
-write_xlsx(sig_df,
-           path = "/Users/dwyun/rsem/sva_prom1_TdT_TW vs TdT_TW sig_genes.xlsx")
+write_xlsx(S1_vs_S2_sig_df,
+           path = "/Users/dwyun/rsem/my_data/DEseq2 sva/S1 vs S2 sig_genes.xlsx")
+
+# S1 vs S3
+
+S1_vs_S3_df <- as.data.frame(S1_vs_S3)
+rownames(S1_vs_S3_df) <- sub("\\.\\d+$", "", rownames(S1_vs_S3_df))
+
+S1_vs_S3_df$gene_id <- rownames(S1_vs_S3_df)
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(S1_vs_S3_df$gene_id),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+S1_vs_S3_df <- S1_vs_S3_df %>%
+  dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
+
+S1_vs_S3_df <- S1_vs_S3_df %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
+  )
+
+S1_vs_S3_df <- S1_vs_S3_df %>%
+  dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
+
+write_xlsx(as.data.frame(S1_vs_S3_df), path = "/Users/dwyun/rsem/my_data/DESeq2 sva/S1 vs S3.xlsx")
+
+lfc_cut <- 1
+fdr_cut <- 0.05
+
+S1_vs_S3_sig_df <- S1_vs_S3_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    abs(log2FoldChange) >= lfc_cut
+  )
+write_xlsx(S1_vs_S3_sig_df,
+           path = "/Users/dwyun/rsem/my_data/DEseq2 sva/S1 vs S3 sig_genes.xlsx")
+# S1 vs S4
+
+S1_vs_S4_df <- as.data.frame(S1_vs_S4)
+rownames(S1_vs_S4_df) <- sub("\\.\\d+$", "", rownames(S1_vs_S4_df))
+
+S1_vs_S4_df$gene_id <- rownames(S1_vs_S4_df)
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(S1_vs_S4_df$gene_id),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+S1_vs_S4_df <- S1_vs_S4_df %>%
+  dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
+
+S1_vs_S4_df <- S1_vs_S4_df %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
+  )
+
+S1_vs_S4_df <- S1_vs_S4_df %>%
+  dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
+
+write_xlsx(as.data.frame(S1_vs_S4_df), path = "/Users/dwyun/rsem/my_data/DESeq2 sva/S1 vs S4.xlsx")
+
+lfc_cut <- 1
+fdr_cut <- 0.05
+
+S1_vs_S4_sig_df <- S1_vs_S4_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    abs(log2FoldChange) >= lfc_cut
+  )
+write_xlsx(S1_vs_S4_sig_df,
+           path = "/Users/dwyun/rsem/my_data/DEseq2 sva/S1 vs S4 sig_genes.xlsx")
+# S2 vs S3
+
+S2_vs_S3_df <- as.data.frame(S2_vs_S3)
+rownames(S2_vs_S3_df) <- sub("\\.\\d+$", "", rownames(S2_vs_S3_df))
+
+S2_vs_S3_df$gene_id <- rownames(S2_vs_S3_df)
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(S2_vs_S3_df$gene_id),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+S2_vs_S3_df <- S2_vs_S3_df %>%
+  dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
+
+S2_vs_S3_df <- S2_vs_S3_df %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
+  )
+
+S2_vs_S3_df <- S2_vs_S3_df %>%
+  dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
+
+write_xlsx(as.data.frame(S2_vs_S3_df), path = "/Users/dwyun/rsem/my_data/DESeq2 sva/S2 vs S3.xlsx")
+
+lfc_cut <- 1
+fdr_cut <- 0.05
+
+S2_vs_S3_sig_df <- S2_vs_S3_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    abs(log2FoldChange) >= lfc_cut
+  )
+write_xlsx(S2_vs_S3_sig_df,
+           path = "/Users/dwyun/rsem/my_data/DEseq2 sva/S2 vs S3 sig_genes.xlsx")
+# S2 vs S4
+
+S2_vs_S4_df <- as.data.frame(S2_vs_S4)
+rownames(S2_vs_S4_df) <- sub("\\.\\d+$", "", rownames(S2_vs_S4_df))
+
+S2_vs_S4_df$gene_id <- rownames(S2_vs_S4_df)
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(S2_vs_S4_df$gene_id),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+S2_vs_S4_df <- S2_vs_S4_df %>%
+  dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
+
+S2_vs_S4_df <- S2_vs_S4_df %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
+  )
+
+S2_vs_S4_df <- S2_vs_S4_df %>%
+  dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
+
+write_xlsx(as.data.frame(S2_vs_S4_df), path = "/Users/dwyun/rsem/my_data/DESeq2 sva/S2 vs S4.xlsx")
+
+lfc_cut <- 1
+fdr_cut <- 0.05
+
+S2_vs_S4_sig_df <- S2_vs_S4_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    abs(log2FoldChange) >= lfc_cut
+  )
+write_xlsx(S2_vs_S4_sig_df,
+           path = "/Users/dwyun/rsem/my_data/DEseq2 sva/S2 vs S4 sig_genes.xlsx")
+
+# S3 vs S4
+
+S3_vs_S4_df <- as.data.frame(S3_vs_S4)
+rownames(S3_vs_S4_df) <- sub("\\.\\d+$", "", rownames(S3_vs_S4_df))
+
+S3_vs_S4_df$gene_id <- rownames(S3_vs_S4_df)
+
+map_orgdb <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys    = unique(S3_vs_S4_df$gene_id),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+) %>% 
+  dplyr::distinct(ENSEMBL, .keep_all = TRUE)
+
+S3_vs_S4_df <- S3_vs_S4_df %>%
+  dplyr::left_join(map_orgdb, by = c("gene_id" = "ENSEMBL"))
+
+S3_vs_S4_df <- S3_vs_S4_df %>%
+  mutate(
+    SYMBOL = coalesce(na_if(SYMBOL, ""), gene_id),
+    ENTREZID = coalesce(na_if(as.character(ENTREZID), ""), gene_id)
+  )
+
+S3_vs_S4_df <- S3_vs_S4_df %>%
+  dplyr::select(gene_id, SYMBOL, ENTREZID, everything())
+
+write_xlsx(as.data.frame(S3_vs_S4_df), path = "/Users/dwyun/rsem/my_data/DESeq2 sva/S3 vs S4.xlsx")
+
+lfc_cut <- 1
+fdr_cut <- 0.05
+
+S3_vs_S4_sig_df <- S3_vs_S4_df %>%
+  filter(
+    !is.na(padj),
+    padj < fdr_cut,
+    abs(log2FoldChange) >= lfc_cut
+  )
+write_xlsx(S3_vs_S4_sig_df,
+           path = "/Users/dwyun/rsem/my_data/DEseq2 sva/S3 vs S4 sig_genes.xlsx")
 
 -------------------------------
-공통 진 밴다이어그램 및 만들기
+  공통 진 밴다이어그램 및 만들기
 nstall.packages("ggvenn")  # 한 번만 설치
 library(ggvenn)
 
