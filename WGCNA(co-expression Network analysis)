@@ -64,6 +64,7 @@ dds <- DESeq(dds)
 # vst 변환 (WGCNA용 expression 값)
 vsd <- vst(dds, blind = FALSE)
 expr_mat <- assay(vsd)   # genes x samples
+rownames(expr_mat) <- sub("\\.\\d+$", "", rownames(expr_mat))
 
 dim(expr_mat)
 
