@@ -114,7 +114,8 @@ net <- blockwiseModules(
   numericLabels = TRUE,
   pamRespectsDendro = FALSE,
   saveTOMs = FALSE,
-  verbose = 3
+  verbose = 3,
+  maxBlockSize = ncol(datExpr)
 )
 
 moduleLabels <- net$colors
