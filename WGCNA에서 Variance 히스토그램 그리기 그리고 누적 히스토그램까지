@@ -33,3 +33,33 @@ ggplot(df, aes(x = var, fill = group)) +
     y = "Gene count",
     fill = NULL
   )
+
+# 누적 히스토그램 그리고 cutoff도 그리기
+
+var_vec <- t  # 또는 v
+
+# 안전 필터
+var_vec <- var_vec[is.finite(var_vec) & var_vec > 0]
+
+# reverse cumulative 계산: 각 variance 값에서 ">= 그 값"인 gene 수
+x <- sort(var_vec)                 # 오름차순
+y <- rev(seq_along(x))             # N, N-1, ..., 1  (x[i] 이상 개수)
+
+df_rc <- data.frame(var = x, n_ge = y)
+
+ggplot(df_rc, aes(x = var, y = n_ge)) +
+  geom_line() +
+  scale_x_log10() +
+  theme_bw() +
+  labs(
+    title = "Reverse cumulative curve of gene-wise variance",
+    x = "Variance (log10 scale)",
+    y = "Number of genes (>= variance)"
+  )
+
+cutoffs <- c(0.1, 0.15, 0.2, 0.5)
+
+data.frame(
+  cutoff = cutoffs,
+  n_genes_ge = sapply(cutoffs, function(c) sum(var_vec >= c))
+)
