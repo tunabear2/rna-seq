@@ -1,0 +1,35 @@
+# 1개 히스토그램 그리기
+# expr_mat까지 되어 있는 상태 기준
+t <- rowVars(expr_mat)
+t <- t[is.finite(t) & tt > 0] # variance 0 제거
+
+ggplot(data.frame(var = t), aes(x = var)) +
+  geom_histogram(bins = 125) +
+  scale_x_log10() +
+  theme_bw() +
+  labs(
+    title = "Variance distribution (expr_mat_sub)",
+    x = "gene-wise variance (log10 scale)",
+    y = "Gene count"
+  )
+# sub set 만들어서 histogram 만들기
+expr_mat_sub <- expr_mat[rownames(expr_mat) %in% gene_union3, , drop = FALSE]
+v <- rowVars(expr_mat_sub)
+v <- v[is.finite(v) & v > 0] # variance 0 제거
+# 두개 합쳐서 하나의 histogram으로 표현하기
+
+df <- dplyr::bind_rows(
+  data.frame(var = t, group = "All genes"),
+  data.frame(var = v, group = "DEG_union")
+)
+
+ggplot(df, aes(x = var, fill = group)) +
+  geom_histogram(bins = 125, position = "identity", alpha = 0.45) +
+  scale_x_log10() +
+  theme_bw() +
+  labs(
+    title = "Variance distribution: All genes vs DEG_union",
+    x = "gene-wise variance (log10 scale)",
+    y = "Gene count",
+    fill = NULL
+  )
