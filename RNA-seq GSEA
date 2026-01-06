@@ -2,10 +2,7 @@
 DESeq2 진행 후에 하기
 
 R에서 진행 방법 (entrezid 방법)
-# 예: S1_vs_S2_sig_genes, S1_vs_S3_sig_genes ... 를 자동으로 찾음
-obj_names <- (S1_vs_S2, S1_vs_S3, S1_vs_S4, S2_vs_S3, S2_vs_S4, S3_vs_S4)
-obj_names
-class(obj_names)
+
 res_list <- list(
   S1_vs_S2 = S1_vs_S2,
   S1_vs_S3 = S1_vs_S3,
