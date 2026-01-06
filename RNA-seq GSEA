@@ -243,6 +243,134 @@ all_fgsea <- dplyr::bind_rows(lapply(names(res_list), function(nm) {
 }))
 
 data.table::fwrite(all_fgsea, file.path(outdir, "ALL_COMPARISONS_fgsea_ENSEMBL.csv"))
+-------------------------------------------------------------------------------------------
+GOterm으로 GSEA하기.
+리스트 만든다음에 진행하기.
+get_go_pathways_ensembl <- function(subcategory = c("GO:BP","GO:MF","GO:CC"),
+                                    species = "Homo sapiens") {
+  subcategory <- match.arg(subcategory)
+  
+  msig <- msigdbr(species = species, category = "C5", subcollection = subcategory)
+  
+  if (!("entrez_gene" %in% colnames(msig))) {
+    stop("msigdbr 결과에 entrez_gene 컬럼이 없습니다. msigdbr 버전을 확인하세요.")
+  }
+  
+  msig <- msig %>%
+    filter(!is.na(entrez_gene)) %>%
+    distinct(gs_name, entrez_gene)
+  
+  entrez_keys <- unique(msig$entrez_gene)
+  
+  map <- AnnotationDbi::select(
+    org.Hs.eg.db,
+    keys     = as.character(entrez_keys),
+    keytype  = "ENTREZID",
+    columns  = c("ENTREZID", "ENSEMBL")
+  ) %>%
+    filter(!is.na(ENSEMBL)) %>%
+    mutate(ENSEMBL = sub("\\..*$", "", as.character(ENSEMBL))) %>%
+    distinct(ENTREZID, ENSEMBL)
+  
+  msig2 <- msig %>%
+    mutate(ENTREZID = as.character(entrez_gene)) %>%
+    inner_join(map, by = "ENTREZID") %>%
+    transmute(gs_name, ENSEMBL) %>%
+    distinct()
+  
+  pathways <- split(msig2$ENSEMBL, msig2$gs_name)
+  pathways <- lapply(pathways, unique)
+  
+  cat("GO subcategory:", subcategory, "\n")
+  cat("GO pathways:", length(pathways), "\n")
+  cat("Total unique ENSEMBL:", length(unique(unlist(pathways))), "\n")
+  
+  pathways
+}
+
+run_fgsea_go_multilevel <- function(df, comp_name, pathways, outdir,
+                                    id_col = "gene_id", score_col = "stat",
+                                    minSize = 20, maxSize = 500, top_plot = 5,
+                                    padj_plot_cut = 0.05) {
+  
+  ranks <- make_rank_ens(df, id_col = id_col, score_col = score_col)
+  if (length(ranks) < 3000) warning(comp_name, ": ranks too small: ", length(ranks))
+  
+  fg <- fgseaMultilevel(
+    pathways = pathways,
+    stats    = ranks,
+    minSize  = minSize,
+    maxSize  = maxSize
+  ) %>% as.data.frame() %>%
+    arrange(padj, desc(abs(NES))) %>%
+    mutate(comparison = comp_name)
+  
+  # leadingEdge는 list-column이라 CSV 저장을 위해 문자열로 변환 권장
+  fg_out <- fg %>%
+    mutate(leadingEdge = vapply(leadingEdge, function(x) paste(x, collapse = ";"), character(1)))
+  
+  data.table::fwrite(fg_out, file.path(outdir, paste0(comp_name, "_fgsea_GO.csv")))
+  
+  # 유의한 term만 top_pos/top_neg plot 저장
+  fg_sig <- fg %>% filter(!is.na(padj), padj < padj_plot_cut) %>% arrange(padj)
+  
+  if (nrow(fg_sig) > 0) {
+    top_pos <- fg_sig %>% filter(NES > 0) %>% slice_head(n = top_plot)
+    top_neg <- fg_sig %>% filter(NES < 0) %>% slice_head(n = top_plot)
+    plot_terms <- unique(c(top_pos$pathway, top_neg$pathway))
+    
+    for (pw in plot_terms) {
+      p <- plotEnrichment(pathways[[pw]], ranks) +
+        ggtitle(paste0(comp_name, " | ", pw))
+      ggsave(
+        filename = file.path(outdir, paste0(comp_name, "__", pw, "_enrichment.png")),
+        plot = p, width = 7, height = 4, dpi = 300
+      )
+    }
+  }
+  
+  fg
+}
+
+stopifnot(!is.null(names(res_list)) && length(names(res_list)) > 0)
+
+pathways_go_bp <- get_go_pathways_ensembl("GO:BP")
+outdir_bp <- file.path("rsem", "results", "gsea", "GO_BP_by_stat_ENSEMBL")
+dir.create(outdir_bp, recursive = TRUE, showWarnings = FALSE)
+
+all_go_bp <- dplyr::bind_rows(lapply(names(res_list), function(nm) {
+  run_fgsea_go_multilevel(
+    df = res_list[[nm]],
+    comp_name = nm,
+    pathways = pathways_go_bp,
+    outdir = outdir_bp,
+    minSize = 20, maxSize = 500,
+    top_plot = 5,
+    padj_plot_cut = 0.05
+  )
+}))
+
+data.table::fwrite(all_go_bp, file.path(outdir_bp, "ALL_COMPARISONS_fgsea_GO_BP.csv"))
+
+# MF
+pathways_go_mf <- get_go_pathways_ensembl("GO:MF")
+outdir_mf <- file.path("rsem", "results", "gsea", "GO_MF_by_stat_ENSEMBL")
+dir.create(outdir_mf, recursive = TRUE, showWarnings = FALSE)
+
+all_go_mf <- dplyr::bind_rows(lapply(names(res_list), function(nm) {
+  run_fgsea_go_multilevel(res_list[[nm]], nm, pathways_go_mf, outdir_mf)
+}))
+data.table::fwrite(all_go_mf, file.path(outdir_mf, "ALL_COMPARISONS_fgsea_GO_MF.csv"))
+
+# CC
+pathways_go_cc <- get_go_pathways_ensembl("GO:CC")
+outdir_cc <- file.path("rsem", "results", "gsea", "GO_CC_by_stat_ENSEMBL")
+dir.create(outdir_cc, recursive = TRUE, showWarnings = FALSE)
+
+all_go_cc <- dplyr::bind_rows(lapply(names(res_list), function(nm) {
+  run_fgsea_go_multilevel(res_list[[nm]], nm, pathways_go_cc, outdir_cc)
+}))
+data.table::fwrite(all_go_cc, file.path(outdir_cc, "ALL_COMPARISONS_fgsea_GO_CC.csv"))
 ------------------------------------------------------------------------------------------
 1. prom1_TdT_TW vs prom1_TdT
 
