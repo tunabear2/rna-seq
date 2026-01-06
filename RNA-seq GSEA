@@ -1,5 +1,111 @@
 ##온라인 GSEA 포멧만들기
 DESeq2 진행 후에 하기
+
+R에서 진행 방법 (entrezid 방법)
+# 예: S1_vs_S2_sig_genes, S1_vs_S3_sig_genes ... 를 자동으로 찾음
+obj_names <- (S1_vs_S2, S1_vs_S3, S1_vs_S4, S2_vs_S3, S2_vs_S4, S3_vs_S4)
+obj_names
+class(obj_names)
+res_list <- list(
+  S1_vs_S2 = S1_vs_S2,
+  S1_vs_S3 = S1_vs_S3,
+  S1_vs_S4 = S1_vs_S4,
+  S2_vs_S3 = S2_vs_S3,
+  S2_vs_S4 = S2_vs_S4,
+  S3_vs_S4 = S3_vs_S4
+)
+
+make_rank <- function(df, id_col = "ENTREZID", score_col = "stat") {
+  stopifnot(id_col %in% colnames(df), score_col %in% colnames(df))
+  
+  x <- df[, c(id_col, score_col)] %>%
+    mutate(
+      id = as.character(.data[[id_col]]),
+      score = as.numeric(.data[[score_col]])
+    ) %>%
+    filter(!is.na(id), id != "", is.finite(score))
+  
+  # 중복 ID가 있으면 |score| 최대인 것만 대표로
+  score_rep <- tapply(x$score, x$id, function(v) v[which.max(abs(v))])
+  
+  rank_vec <- sort(unlist(score_rep), decreasing = TRUE)
+  rank_vec
+}
+
+msig_h <- msigdbr(species = "Homo sapiens", category = "H") %>%
+  filter(!is.na(entrez_gene)) %>%
+  distinct(gs_name, entrez_gene)
+
+pathways <- split(msig_h$entrez_gene, msig_h$gs_name)
+length(pathways)
+
+outdir <- file.path("rsem", "results", "gsea", "HALLMARK_by_stat")
+dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+
+run_gsea_one <- function(df, comp_name, pathways, outdir,
+                         id_col = "ENTREZID", score_col = "stat",
+                         minSize = 15, maxSize = 500, nperm = 10000,
+                         top_plot = 5) {
+  
+  # (권장 체크) 너무 적은 row면 "sig만 있는 객체"일 가능성
+  if (nrow(df) < 3000) {
+    warning(comp_name, " : rows가 너무 적어 보여. GSEA는 전체 gene results가 필요해. (지금 nrow=", nrow(df), ")")
+  }
+  
+  ranks <- make_rank(df, id_col = id_col, score_col = score_col)
+  
+  fg <- fgsea(
+    pathways = pathways,
+    stats    = ranks,
+    minSize  = minSize,
+    maxSize  = maxSize,
+    nperm    = nperm
+  ) %>% as.data.frame() %>%
+    arrange(padj, desc(abs(NES))) %>%
+    mutate(comparison = comp_name)
+  
+  # 결과 저장
+  fwrite(fg, file.path(outdir, paste0(comp_name, "_fgsea.csv")))
+  
+  # 상위 enrichment plot 저장(양/음 방향 각각)
+  fg_sig <- fg %>% filter(!is.na(padj)) %>% arrange(padj)
+  if (nrow(fg_sig) > 0) {
+    top_pos <- fg_sig %>% filter(NES > 0) %>% slice_head(n = top_plot)
+    top_neg <- fg_sig %>% filter(NES < 0) %>% slice_head(n = top_plot)
+    
+    plot_terms <- c(top_pos$pathway, top_neg$pathway)
+    plot_terms <- unique(plot_terms)
+    
+    for (pw in plot_terms) {
+      p <- plotEnrichment(pathways[[pw]], ranks) +
+        ggtitle(paste0(comp_name, " | ", pw))
+      ggsave(
+        filename = file.path(outdir, paste0(comp_name, "__", pw, "_enrichment.png")),
+        plot = p, width = 7, height = 4, dpi = 300
+      )
+    }
+  }
+  
+  fg
+}
+
+# 전체 비교군 실행
+all_fgsea <- bind_rows(lapply(names(res_list), function(nm) {
+  run_gsea_one(
+    df = res_list[[nm]],
+    comp_name = nm,
+    pathways = pathways,
+    outdir = outdir,
+    id_col = "ENTREZID",
+    score_col = "stat",
+    minSize = 15, maxSize = 500,
+    nperm = 10000,
+    top_plot = 5
+  )
+}))
+
+# 통합 결과 저장
+fwrite(all_fgsea, file.path(outdir, "ALL_COMPARISONS_fgsea.csv"))
 ------------------------------------------------------------------------------------------
 1. prom1_TdT_TW vs prom1_TdT
 
