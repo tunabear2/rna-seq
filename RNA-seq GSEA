@@ -106,6 +106,143 @@ all_fgsea <- bind_rows(lapply(names(res_list), function(nm) {
 
 # 통합 결과 저장
 fwrite(all_fgsea, file.path(outdir, "ALL_COMPARISONS_fgsea.csv"))
+
+
+-----------------------------------------------------------------------
+list만든 이후 진행.
+make_rank_ens <- function(df, id_col = "gene_id", score_col = "stat") {
+  stopifnot(id_col %in% colnames(df), score_col %in% colnames(df))
+  
+  x <- df[, c(id_col, score_col)]
+  x[[id_col]] <- as.character(x[[id_col]])
+  x[[score_col]] <- as.numeric(x[[score_col]])
+  
+  # ENSEMBL 버전(.숫자) 있으면 제거 (이미 정리돼 있어도 안전하게)
+  x[[id_col]] <- sub("\\..*$", "", x[[id_col]])
+  
+  x <- x[!is.na(x[[id_col]]) & x[[id_col]] != "" & is.finite(x[[score_col]]), , drop = FALSE]
+  
+  # 중복 ENSEMBL이 있으면 |stat| 최대값 1개로 대표
+  rep_score <- tapply(x[[score_col]], x[[id_col]], function(v) v[which.max(abs(v))])
+  
+  ranks <- sort(unlist(rep_score), decreasing = TRUE)
+  ranks
+}
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(msigdbr)
+  library(org.Hs.eg.db)
+  library(AnnotationDbi)
+})
+
+get_hallmark_pathways_ensembl <- function() {
+  msig <- msigdbr(species = "Homo sapiens", category = "H")
+  
+  # (A) 혹시 msigdbr에 ENSEMBL 컬럼이 이미 있으면 그걸 우선 사용
+  ens_cols <- intersect(c("ensembl_gene", "ensembl_gene_id", "ensembl"), colnames(msig))
+  if (length(ens_cols) > 0) {
+    msig2 <- msig %>%
+      transmute(gs_name, ENSEMBL = sub("\\..*$", "", as.character(.data[[ens_cols[1]]]))) %>%
+      filter(!is.na(ENSEMBL), ENSEMBL != "")
+  } else {
+    # (B) 없으면 SYMBOL -> ENSEMBL 매핑
+    stopifnot("gene_symbol" %in% colnames(msig))
+    
+    sym_keys <- unique(na.omit(msig$gene_symbol))
+    map <- AnnotationDbi::select(
+      org.Hs.eg.db,
+      keys     = sym_keys,
+      keytype  = "SYMBOL",
+      columns  = c("SYMBOL", "ENSEMBL")
+    ) %>%
+      filter(!is.na(ENSEMBL)) %>%
+      mutate(ENSEMBL = sub("\\..*$", "", as.character(ENSEMBL))) %>%
+      distinct(SYMBOL, ENSEMBL)
+    
+    msig2 <- msig %>%
+      transmute(gs_name, SYMBOL = gene_symbol) %>%
+      inner_join(map, by = "SYMBOL") %>%
+      transmute(gs_name, ENSEMBL) %>%
+      distinct()
+  }
+  
+  pathways <- split(msig2$ENSEMBL, msig2$gs_name)
+  pathways <- lapply(pathways, unique)
+  
+  # 간단 점검
+  cat("Hallmark pathways:", length(pathways), "\n")
+  cat("Total unique ENSEMBL in Hallmark:", length(unique(unlist(pathways))), "\n")
+  
+  pathways
+}
+
+suppressPackageStartupMessages({
+  library(fgsea)
+  library(data.table)
+  library(ggplot2)
+})
+
+run_fgsea_ens_multilevel <- function(df, comp_name, pathways, outdir,
+                          id_col = "gene_id", score_col = "stat",
+                          minSize = 15, maxSize = 500, top_plot=5) {
+  
+  ranks <- make_rank_ens(df, id_col = id_col, score_col = score_col)
+  
+  fg <- fgseaMultilevel(
+    pathways = pathways,
+    stats    = ranks,
+    minSize  = minSize,
+    maxSize  = maxSize
+  ) %>% as.data.frame() %>%
+    arrange(padj, desc(abs(NES))) %>%
+    mutate(comparison = comp_name)
+  
+  fwrite(fg, file.path(outdir, paste0(comp_name, "_fgsea_ENSEMBL.csv")))
+  
+  # 상위 enrichment plot 저장 (양/음 각각)
+  fg_sig <- fg %>% filter(!is.na(padj)) %>% arrange(padj)
+  if (nrow(fg_sig) > 0) {
+    top_pos <- fg_sig %>% filter(NES > 0) %>% slice_head(n = top_plot)
+    top_neg <- fg_sig %>% filter(NES < 0) %>% slice_head(n = top_plot)
+    plot_terms <- unique(c(top_pos$pathway, top_neg$pathway))
+    
+    for (pw in plot_terms) {
+      p <- plotEnrichment(pathways[[pw]], ranks) +
+        ggtitle(paste0(comp_name, " | ", pw))
+      ggsave(
+        filename = file.path(outdir, paste0(comp_name, "__", pw, "_enrichment.png")),
+        plot = p, width = 7, height = 4, dpi = 300
+      )
+    }
+  }
+  
+  fg
+}
+
+# 6개 비교 결과 객체 자동 수집
+
+# Hallmark gene set (ENSEMBL로 맞춘 pathways)
+pathways_h_ens <- get_hallmark_pathways_ensembl()
+
+outdir <- file.path("rsem", "results", "gsea", "HALLMARK_by_stat_ENSEMBL")
+dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+
+all_fgsea <- dplyr::bind_rows(lapply(names(res_list), function(nm) {
+  run_fgsea_ens_multilevel(
+    df = res_list[[nm]],
+    comp_name = nm,
+    pathways = pathways_h_ens,
+    outdir = outdir,
+    id_col = "gene_id",
+    score_col = "stat",
+    minSize = 15,
+    maxSize = 500,
+    top_plot = 5
+  )
+}))
+
+data.table::fwrite(all_fgsea, file.path(outdir, "ALL_COMPARISONS_fgsea_ENSEMBL.csv"))
 ------------------------------------------------------------------------------------------
 1. prom1_TdT_TW vs prom1_TdT
 
