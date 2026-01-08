@@ -1,7 +1,12 @@
 ##온라인 GSEA 포멧만들기
+GSEA
+모든 유전자를 log2FC 기준으로 순위를 매기고, Entrez id가 없는 gene은 배제해야하고, shrinkLFC 값을 사용해야 한다고함.
+## res_shrink >- lfcShrink(dds, contrast = c("condition", "Treat", "Control"), type = "apeglm")
 DESeq2 진행 후에 하기
 
 R에서 진행 방법 (entrezid 방법)
+fgsea,,
+
 
 res_list <- list(
   S1_vs_S2 = S1_vs_S2,
