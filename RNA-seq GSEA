@@ -31,6 +31,10 @@ S1_vs_S2_gsea <- fgsea(pathways = msigdbr_list, stats = ranks_unique) # pathways
 
 fwrite(S1_vs_S2_gsea, "S1_vs_S2_gsea.csv") # data.table 키고.
 
+head(test[order(padj, -abs(NES)), ], n=10)  # 여기서 순위 확인하고 plot 그리기
+
+plotEnrichment(msigdbr_list[["GOCC_MITOCHONDRION"]], ranks_filter)
+
 ------------------------------------------------------------------------------------------
 1. prom1_TdT_TW vs prom1_TdT
 
