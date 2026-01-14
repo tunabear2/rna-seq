@@ -7,6 +7,27 @@ DESeq2 진행 후에 하기
 R에서 진행 방법 (entrezid 방법)
 fgsea,,
 
+gsea_data <- filter(res_df, !is.na(ENTREZID))
+ranks <- gsea_data$stat
+names(ranks) <- gsea_data$ENTREZID
+ranks_filter <- ranks[!is.na(ranks)]
+barplot(sort(ranks_filter, decreasing = TRUE))
+msig_h <- msigdbr(db_species = "HS", species = "human", collection = "C5")
+
+sum(duplicated(names(ranks_filter))) # 중복된 이름 제거
+head(names(ranks_filter)[duplicated(names(ranks_filter))])
+r <- ranks_filter
+r <- r[order(abs(r), decreasing = TRUE)]
+r <- r[!duplicated(names(r))]
+r
+ranks_unique <- r
+
+msigdbr_list <- split(x = msig_h$ncbi_gene, f = msig_h$gs_name)
+
+S1_vs_S2_gsea <- fgsea(pathways = msigdbr_list, stats = ranks_unique) # pathways에는 list형태가 input으로 들어가야 한다고 함.
+
+
+
 
 res_list <- list(
   S1_vs_S2 = S1_vs_S2,
