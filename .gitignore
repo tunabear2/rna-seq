@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+*.egg-info/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# Snakemake
+.snakemake/
+results/
+logs/
+
+# Singularity / containers
+*.sif
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Data (large files)
+*.bam
+*.bai
+*.fastq
+*.fastq.gz
+*.sam
+*.bed
+*.gtf
+*.fa
+*.fasta
